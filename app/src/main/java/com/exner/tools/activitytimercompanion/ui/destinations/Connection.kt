@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
+import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
 import com.exner.tools.activitytimercompanion.ui.ProcessState
 import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -59,7 +60,8 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @Destination<RootGraph>
 @Composable
 fun Connection(
-    sendToNearbyDeviceViewModel: ConnectionViewModel = hiltViewModel(),
+    connectionViewModel: ConnectionViewModel = hiltViewModel(),
+    mainActivityViewModel: MainActivityViewModel = hiltViewModel(),
     navigator: DestinationsNavigator
 ) {
     val context = LocalContext.current
@@ -70,10 +72,10 @@ fun Connection(
             permissions = permissions.getAllNecessaryPermissionsAsListOfStrings()
         )
 
-    val processState by sendToNearbyDeviceViewModel.processStateFlow.collectAsState()
+    val processState by connectionViewModel.processStateFlow.collectAsState()
 
     val connectionsClient = Nearby.getConnectionsClient(context)
-    sendToNearbyDeviceViewModel.provideConnectionsClient(connectionsClient = connectionsClient)
+    connectionViewModel.provideConnectionsClient(connectionsClient = connectionsClient)
 
     val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, endpointInfo: DiscoveredEndpointInfo) {
@@ -85,35 +87,38 @@ fun Connection(
             connectionsClient.requestConnection(
                 endpoint.userName,
                 endpoint.endpointId,
-                sendToNearbyDeviceViewModel.timerLifecycleCallback
+                connectionViewModel.timerLifecycleCallback
             )
                 .addOnSuccessListener { _: Void? ->
                     Log.d("TEDC", "Connection request succeeded!")
+                    mainActivityViewModel.updateConnectedToTV(connectedToTV = true)
                 }
                 .addOnFailureListener { e: Exception? ->
                     if (e != null) {
                         Log.d("TEDC", "Connection failed: ${e.message}")
                     }
+                    mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
                 }
 
         }
 
         override fun onEndpointLost(endpointId: String) {
             Log.d("TEDC", "On Endpoint Lost... $endpointId")
+            mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
         }
     }
-    sendToNearbyDeviceViewModel.provideEndpointDiscoveryCallback(endpointDiscoveryCallback)
+    connectionViewModel.provideEndpointDiscoveryCallback(endpointDiscoveryCallback)
 
-    val discoveredEndpoints: List<TimerEndpoint> by sendToNearbyDeviceViewModel.endpointsFound.collectAsStateWithLifecycle(
+    val discoveredEndpoints: List<TimerEndpoint> by connectionViewModel.endpointsFound.collectAsStateWithLifecycle(
         initialValue = emptyList()
     )
 
     val openAuthenticationDialog = remember { mutableStateOf(false) }
-    val connectionInfo by sendToNearbyDeviceViewModel.connectionInfo.collectAsState()
+    val connectionInfo by connectionViewModel.connectionInfo.collectAsState()
 
     // some sanity checking for state
     if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS && permissionsNeeded.allPermissionsGranted) {
-        sendToNearbyDeviceViewModel.transitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
+        connectionViewModel.transitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
     } else if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS) {
         Log.d("STND", "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}")
     }
@@ -152,7 +157,7 @@ fun Connection(
 
                     ProcessStateConstants.DISCOVERY_STARTED -> {
                         ProcessStateDiscoveryStartedScreen(discoveredEndpoints) { endpointId ->
-                            sendToNearbyDeviceViewModel.transitionToNewState(
+                            connectionViewModel.transitionToNewState(
                                 ProcessStateConstants.PARTNER_CHOSEN,
                                 endpointId
                             )
@@ -178,14 +183,14 @@ fun Connection(
                             info = connectionInfo,
                             confirmCallback = {
                                 openAuthenticationDialog.value = false
-                                sendToNearbyDeviceViewModel.transitionToNewState(
+                                connectionViewModel.transitionToNewState(
                                     ProcessStateConstants.AUTHENTICATION_OK,
                                     "Accepted"
                                 )
                             },
                             dismissCallback = {
                                 openAuthenticationDialog.value = false
-                                sendToNearbyDeviceViewModel.transitionToNewState(
+                                connectionViewModel.transitionToNewState(
                                     ProcessStateConstants.AUTHENTICATION_DENIED,
                                     "Denied"
                                 )
@@ -198,6 +203,7 @@ fun Connection(
 
                     ProcessStateConstants.CONNECTION_ESTABLISHED -> {
                         // TODO
+                        mainActivityViewModel.updateConnectedToTV(connectedToTV = true)
                     }
 
                     ProcessStateConstants.CONNECTION_DENIED -> {}
@@ -213,6 +219,7 @@ fun Connection(
                         Column(modifier = Modifier.fillMaxSize()) {
                             Text(text = "Cancelled.")
                         }
+                        mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
                     }
 
                     ProcessStateConstants.ERROR -> {
@@ -221,16 +228,17 @@ fun Connection(
                             DefaultSpacer()
                             Text(text = processState.message)
                         }
+                        mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
                     }
 
                 }
             }
         },
         bottomBar = {
-            SendToNearbyBottomBar(
+            ConnectionBottomBar(
                 navigator = navigator,
                 processState = processState,
-                transition = sendToNearbyDeviceViewModel::transitionToNewState
+                transition = connectionViewModel::transitionToNewState
             )
         }
     )
@@ -316,7 +324,7 @@ private fun ProcessStateDiscoveryStartedScreen(
 }
 
 @Composable
-fun SendToNearbyBottomBar(
+fun ConnectionBottomBar(
     navigator: DestinationsNavigator,
     processState: ProcessState,
     transition: (ProcessStateConstants, String) -> Unit

@@ -73,8 +73,8 @@ enum class ProcessStateConstants {
  *
  */
 
-const val endpointId: String = "com.exner.tools.ActivityTimer"
-const val userName: String = "Meditation Timer"
+const val endpointId: String = "com.exner.tools.ActivityTimer.Companion"
+const val userName: String = "Activity Timer Companion"
 const val checkInterval: Long = 500 // this should be milliseconds
 
 data class ProcessState(

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.exner.tools.activitytimercompanion.data.preferences.ActivityTimerCompanionUserPreferencesManager
 import com.exner.tools.activitytimercompanion.ui.theme.Theme
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -20,5 +21,12 @@ class MainActivityViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
         initialValue = Theme.Auto
     )
+
+    private var _connectedToTV: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val connectedToTV: StateFlow<Boolean> = _connectedToTV
+
+    fun updateConnectedToTV(connectedToTV: Boolean) {
+        _connectedToTV.value = connectedToTV
+    }
 
 }

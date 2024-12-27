@@ -27,26 +27,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.exner.tools.activitytimercompanion.ui.ProcessListViewModel
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exner.tools.activitytimercompanion.data.persistence.TimerProcess
 import com.exner.tools.activitytimercompanion.data.persistence.TimerProcessCategory
 import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.CategoryListDefinitions
 import com.exner.tools.activitytimercompanion.ui.HeaderText
+import com.exner.tools.activitytimercompanion.ui.ProcessListViewModel
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ProcessDetailsDestination
 import com.ramcosta.composedestinations.generated.destinations.ProcessEditDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -60,7 +60,11 @@ fun ProcessList(
         initialValue = emptyList()
     )
     val currentCategory: TimerProcessCategory by processListViewModel.currentCategory.collectAsStateWithLifecycle(
-        initialValue = TimerProcessCategory(name = "All", backgroundUri = null, uid = CategoryListDefinitions.CATEGORY_UID_ALL)
+        initialValue = TimerProcessCategory(
+            name = "All",
+            backgroundUri = null,
+            uid = CategoryListDefinitions.CATEGORY_UID_ALL
+        )
     )
     val categories: List<TimerProcessCategory> by processListViewModel.observeCategoriesRaw.collectAsStateWithLifecycle(
         initialValue = emptyList()
@@ -127,25 +131,26 @@ fun ProcessList(
                     }
                 }
 
-                val filteredProcesses = if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_ALL) {
-                    processes
-                } else if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_NONE) {
-                    processes.filter { process ->
-                        CategoryListDefinitions.CATEGORY_UID_NONE == process.categoryId || 0L == process.categoryId || null == process.categoryId
+                val filteredProcesses =
+                    if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_ALL) {
+                        processes
+                    } else if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_NONE) {
+                        processes.filter { process ->
+                            CategoryListDefinitions.CATEGORY_UID_NONE == process.categoryId || 0L == process.categoryId || null == process.categoryId
+                        }
+                    } else {
+                        processes.filter { process ->
+                            currentCategory.uid == process.categoryId
+                        }
                     }
-                } else {
-                    processes.filter { process ->
-                        currentCategory.uid == process.categoryId
-                    }
-                }
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 250.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(innerPadding)
                 ) {
-                    items(count = filteredProcesses.size) { meditationTimerProcess ->
-                        val mtProcess = filteredProcesses[meditationTimerProcess]
+                    items(count = filteredProcesses.size) { timerProcess ->
+                        val mtProcess = filteredProcesses[timerProcess]
                         Surface(
                             modifier = Modifier
                                 .clickable {

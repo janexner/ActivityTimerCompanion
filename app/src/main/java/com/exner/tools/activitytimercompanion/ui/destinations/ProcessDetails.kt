@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.exner.tools.activitytimercompanion.data.persistence.TimerProcessCategory
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,6 +94,13 @@ fun ProcessDetails(
                     text = "Category: " + currentCategory.name,
                     modifier = modifier1.padding(8.dp, 0.dp)
                 )
+                Text(
+                    text = "Background URL: " + (backgroundUri ?: "none"),
+                    modifier = modifier1.padding(8.dp, 0.dp)
+                )
+                if (backgroundUri != null) {
+                    AsyncImage(backgroundUri, contentDescription = backgroundUri)
+                }
                 HorizontalDivider(modifier = Modifier.padding(8.dp))
                 ProcessTimerData(
                     processTime,

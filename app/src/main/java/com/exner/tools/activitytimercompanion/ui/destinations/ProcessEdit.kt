@@ -182,6 +182,22 @@ fun ProcessEdit(
                         }
                     }
                 }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    TextField(
+                        value = backgroundUri ?: "Background URL",
+                        onValueChange = {
+                            processEditViewModel.updateBackgroundUri(it)
+                            modified = true
+                        },
+                        label = { Text(text = "Background URL") },
+                        singleLine = false,
+                        modifier = Modifier.weight(0.75f)
+                    )
+                }
                 HeaderText(text = "Times")
                 TextFieldForTimes(
                     value = processTime ?: 30,

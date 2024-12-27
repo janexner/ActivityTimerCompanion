@@ -23,9 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.AboutDestination
+import com.ramcosta.composedestinations.generated.destinations.CategoryListDestination
+import com.ramcosta.composedestinations.generated.destinations.ProcessListDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsDestination
 import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -35,15 +40,19 @@ import com.ramcosta.composedestinations.utils.currentDestinationAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 
 @Composable
-fun ActivityTimerCompanionGlobalScaffold() {
+fun ActivityTimerCompanionGlobalScaffold(
+    mainActivityViewModel: MainActivityViewModel = hiltViewModel()
+) {
     val engine = rememberNavHostEngine()
     val navController = engine.rememberNavController()
     val destinationsNavigator = navController.rememberDestinationsNavigator()
     val destination = navController.currentDestinationAsState().value
 
+    val connectedToTV: Boolean by mainActivityViewModel.connectedToTV.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
-            MeditationTimerTopBar(destination, destinationsNavigator)
+            ActivityTimerCompanionTopBar(destination, destinationsNavigator, connectedToTV)
         },
         content = { innerPadding ->
             val newPadding = PaddingValues.Absolute(
@@ -61,11 +70,13 @@ fun ActivityTimerCompanionGlobalScaffold() {
         }
     )
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MeditationTimerTopBar(
+private fun ActivityTimerCompanionTopBar(
     destination: DestinationSpec?,
     destinationsNavigator: DestinationsNavigator,
+    manageMenusVisible: Boolean = false
 ) {
     var displayMainMenu by remember { mutableStateOf(false) }
 
@@ -102,14 +113,34 @@ private fun MeditationTimerTopBar(
                 expanded = displayMainMenu,
                 onDismissRequest = { displayMainMenu = false }
             ) {
-//                DropdownMenuItem(
-//                    enabled = destination != CategoryListDestination,
-//                    text = { Text(text = "Manage categories", style = MaterialTheme.typography.bodyLarge) },
-//                    onClick = {
-//                        displayMainMenu = false
-//                        destinationsNavigator.navigate(CategoryListDestination())
-//                    }
-//                )
+                if (manageMenusVisible) {
+                    DropdownMenuItem(
+                        enabled = destination != ProcessListDestination,
+                        text = {
+                            Text(
+                                text = "Manage processes",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        },
+                        onClick = {
+                            displayMainMenu = false
+                            destinationsNavigator.navigate(ProcessListDestination())
+                        }
+                    )
+                    DropdownMenuItem(
+                        enabled = destination != CategoryListDestination,
+                        text = {
+                            Text(
+                                text = "Manage categories",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        },
+                        onClick = {
+                            displayMainMenu = false
+                            destinationsNavigator.navigate(CategoryListDestination())
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     enabled = destination != SettingsDestination,
                     text = { Text(text = "Settings", style = MaterialTheme.typography.bodyLarge) },
@@ -121,7 +152,12 @@ private fun MeditationTimerTopBar(
                 HorizontalDivider()
                 DropdownMenuItem(
                     enabled = destination != AboutDestination,
-                    text = { Text(text = "About Activity Timer Companion", style = MaterialTheme.typography.bodyLarge) },
+                    text = {
+                        Text(
+                            text = "About Activity Timer Companion",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    },
                     onClick = {
                         displayMainMenu = false
                         destinationsNavigator.navigate(AboutDestination())
