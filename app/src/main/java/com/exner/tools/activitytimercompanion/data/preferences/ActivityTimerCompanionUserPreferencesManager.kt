@@ -54,10 +54,26 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
         }
     }
 
+    fun chainToSameCategoryOnly(): Flow<Boolean> {
+        return userDataStorePreferences.data.catch {
+            emit(emptyPreferences())
+        }.map { preferences ->
+            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] ?: false
+        }
+    }
+
+    suspend fun setChainToSameCategoryOnly(newChainToSameOnly: Boolean) {
+        userDataStorePreferences.edit { preferences ->
+            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] = newChainToSameOnly
+        }
+    }
+
     private companion object {
 
         val KEY_NIGHT_MODE = booleanPreferencesKey(name = "preference_night_mode")
         val KEY_THEME = stringPreferencesKey(name = "preference_theme")
         val KEY_SIMPLE_DISPLAY = booleanPreferencesKey(name = "simple_display")
+        val KEY_CHAIN_TO_SAME_CATEGORY_ONLY =
+            booleanPreferencesKey(name = "chain_to_same_category_only")
     }
 }

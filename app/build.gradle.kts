@@ -78,6 +78,14 @@ dependencies {
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
 
+    // Room components
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
+    implementation(libs.room.ktx)
+
+    // Async image loading
+    implementation(libs.coil.compose)
+
     // others
     implementation(libs.google.material)
     implementation(libs.androidx.material3.android)
