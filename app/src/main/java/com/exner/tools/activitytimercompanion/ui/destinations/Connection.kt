@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -27,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,15 +47,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
 import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
 import com.exner.tools.activitytimercompanion.ui.ProcessState
 import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
+import com.exner.tools.activitytimercompanion.ui.UIEvent
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.ramcosta.composedestinations.generated.destinations.EditorFrontDoorDestination
+import kotlinx.coroutines.flow.collect
 
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -118,9 +124,17 @@ fun Connection(
 
     // some sanity checking for state
     if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS && permissionsNeeded.allPermissionsGranted) {
-        connectionViewModel.transitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
+        connectionViewModel.triggerTransitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
     } else if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS) {
         Log.d("STND", "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}")
+    }
+
+    LaunchedEffect(Unit) {
+        connectionViewModel.events.collect { event ->
+            if (event is UIEvent.transitionState) {
+                Log.d("CLE", "VM says we need to transition to ${event.newState}")
+            }
+        }
     }
 
     Scaffold(
@@ -157,7 +171,7 @@ fun Connection(
 
                     ProcessStateConstants.DISCOVERY_STARTED -> {
                         ProcessStateDiscoveryStartedScreen(discoveredEndpoints) { endpointId ->
-                            connectionViewModel.transitionToNewState(
+                            connectionViewModel.triggerTransitionToNewState(
                                 ProcessStateConstants.PARTNER_CHOSEN,
                                 endpointId
                             )
@@ -183,14 +197,14 @@ fun Connection(
                             info = connectionInfo,
                             confirmCallback = {
                                 openAuthenticationDialog.value = false
-                                connectionViewModel.transitionToNewState(
+                                connectionViewModel.triggerTransitionToNewState(
                                     ProcessStateConstants.AUTHENTICATION_OK,
                                     "Accepted"
                                 )
                             },
                             dismissCallback = {
                                 openAuthenticationDialog.value = false
-                                connectionViewModel.transitionToNewState(
+                                connectionViewModel.triggerTransitionToNewState(
                                     ProcessStateConstants.AUTHENTICATION_DENIED,
                                     "Denied"
                                 )
@@ -207,7 +221,13 @@ fun Connection(
                     }
 
                     ProcessStateConstants.CONNECTION_DENIED -> {}
-                    ProcessStateConstants.SENDING -> {}
+
+                    ProcessStateConstants.DATA_RECEIVED -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text(text = "Data received.")
+                        }
+                    }
+//                    ProcessStateConstants.SENDING -> {}
 
                     ProcessStateConstants.DONE -> {
                         Column(modifier = Modifier.fillMaxSize()) {
@@ -230,7 +250,6 @@ fun Connection(
                         }
                         mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
                     }
-
                 }
             }
         },
@@ -238,7 +257,7 @@ fun Connection(
             ConnectionBottomBar(
                 navigator = navigator,
                 processState = processState,
-                transition = connectionViewModel::transitionToNewState
+                transition = connectionViewModel::triggerTransitionToNewState
             )
         }
     )
@@ -374,17 +393,33 @@ fun ConnectionBottomBar(
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                     )
                 }
-                ProcessStateConstants.AUTHENTICATION_OK -> {
+//                ProcessStateConstants.AUTHENTICATION_OK -> {
+//                    ExtendedFloatingActionButton(
+//                        text = { Text(text = "Send") },
+//                        icon = {
+//                            Icon(
+//                                imageVector = Icons.Default.Check,
+//                                contentDescription = "Send Processes"
+//                            )
+//                        },
+//                        onClick = {
+//                            transition(ProcessStateConstants.SENDING, "Sending")
+//                        },
+//                        containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
+//                        elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
+//                    )
+//                }
+                ProcessStateConstants.DATA_RECEIVED -> {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = "Send") },
+                        text = { Text(text = "Manage") },
                         icon = {
                             Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Send Processes"
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Manage"
                             )
                         },
                         onClick = {
-                            transition(ProcessStateConstants.SENDING, "Sending")
+                            navigator.navigate(EditorFrontDoorDestination)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),

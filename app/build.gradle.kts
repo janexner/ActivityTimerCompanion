@@ -101,6 +101,10 @@ dependencies {
     // Async image loading
     implementation(libs.coil.compose)
 
+    // Retrofit / Moshi
+    implementation(libs.moshi)
+    ksp(libs.moshi.codegen)
+
     // others
     implementation(libs.google.material)
     implementation(libs.androidx.material3.android)

@@ -3,6 +3,8 @@ package com.exner.tools.activitytimercompanion.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.exner.tools.activitytimercompanion.data.AllDataHolder
+import com.exner.tools.activitytimercompanion.data.persistence.TimerDataRepository
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
@@ -15,15 +17,20 @@ import com.google.android.gms.nearby.connection.Payload
 import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.text.Charsets.UTF_8
 
 enum class ProcessStateConstants {
     AWAITING_PERMISSIONS, // IDLE
@@ -38,7 +45,7 @@ enum class ProcessStateConstants {
     AUTHENTICATION_DENIED,
     CONNECTION_ESTABLISHED,
     CONNECTION_DENIED,
-    SENDING,
+    DATA_RECEIVED,
     DONE,
     CANCELLED,
     ERROR
@@ -90,6 +97,7 @@ data class EndpointConnectionInformation(
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
+    private val repository: TimerDataRepository
 ) : ViewModel() {
 
     private val _processStateFlow = MutableStateFlow(ProcessState())
@@ -101,13 +109,65 @@ class ConnectionViewModel @Inject constructor(
     private lateinit var endpointDiscoveryCallback: EndpointDiscoveryCallback
     private lateinit var connectionsClient: ConnectionsClient
 
+    private val moshi = Moshi.Builder().build()
+    val adapter: JsonAdapter<AllDataHolder> = moshi.adapter(AllDataHolder::class.java)
+
+    private val eventChannel = Channel<UIEvent>(Channel.BUFFERED)
+    val events = eventChannel.receiveAsFlow()
+
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
-            Log.d("SNDVMPTU", "Payload received ${payload.id}")
+            Log.d("CVMPC", "Payload received ${payload.id}")
+            if (payload.type == Payload.Type.BYTES) {
+                val allDataJson: String = String(payload.asBytes()!!, UTF_8)
+                val allData = adapter.fromJson(allDataJson)
+                if (allData != null) {
+                    Log.d(
+                        "CVMPC",
+                        "Received ${allData.processes.size} processes and ${allData.categories.size} categories."
+                    )
+                    viewModelScope.launch() {
+                        allData.categories.forEach { category ->
+                            repository.insertCategory(category = category)
+                        }
+                        allData.processes.forEach { process ->
+                            repository.insert(process)
+                        }
+                        Log.d("CVMPCasync", "Inserted all data into DB.")
+                        viewModelScope.launch() {
+                            eventChannel.send(
+                                UIEvent.transitionState(
+                                    ProcessStateConstants.DATA_RECEIVED,
+                                    "Data received"
+                                )
+                            )
+                        }
+                    }
+                }
+            } else {
+                Log.d("CVMPC", "Payload received from $endpointId but wrong type: $payload")
+            }
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            Log.d("SNDVMPTU", "Payload Transfer Update: ${update.status}")
+            Log.d("CVMPTU", "Payload Transfer Update: ${update.status}")
+            when (update.status) {
+                PayloadTransferUpdate.Status.CANCELED -> {
+                    Log.d("CVMPTU", "Transfer cancelled")
+                }
+
+                PayloadTransferUpdate.Status.FAILURE -> {
+                    Log.d("CVMPTU", "Transfer failed")
+                }
+
+                PayloadTransferUpdate.Status.IN_PROGRESS -> {
+                    Log.d("CVMPTU", "Transfer in progress")
+                }
+
+                PayloadTransferUpdate.Status.SUCCESS -> {
+                    Log.d("CVMPTU", "Transfer successful")
+                }
+            }
         }
     }
 
@@ -127,9 +187,14 @@ class ConnectionViewModel @Inject constructor(
                 authenticationDigits = connectionInfo.authenticationDigits
             )
             // now move to auth requested
-            _processStateFlow.value = ProcessState(ProcessStateConstants.AUTHENTICATION_REQUESTED,
-                connectionInfo.endpointName
-            )
+            viewModelScope.launch() {
+                eventChannel.send(
+                    UIEvent.transitionState(
+                        ProcessStateConstants.AUTHENTICATION_REQUESTED,
+                        connectionInfo.endpointName
+                    )
+                )
+            }
         }
 
         override fun onConnectionResult(
@@ -147,24 +212,38 @@ class ConnectionViewModel @Inject constructor(
                 if (null == statusMessage) {
                     statusMessage = "Unknown issue"
                 }
-                _processStateFlow.value = ProcessState(
-                    ProcessStateConstants.CONNECTION_DENIED,
-                    message = statusMessage
-                )
+                viewModelScope.launch() {
+                    eventChannel.send(
+                        UIEvent.transitionState(
+                            ProcessStateConstants.CONNECTION_DENIED,
+                            message = statusMessage
+                        )
+                    )
+                }
             } else {
                 // this worked!
                 val newEndpoint = pendingConnections.remove(endpointId)
                 establishedConnections[endpointId] = newEndpoint!!
-                _processStateFlow.value = ProcessState(
-                    ProcessStateConstants.CONNECTION_ESTABLISHED,
-                    "Connection established: ${newEndpoint.userName}"
-                )
+                viewModelScope.launch() {
+                    eventChannel.send(
+                        UIEvent.transitionState(
+                            ProcessStateConstants.CONNECTION_ESTABLISHED,
+                            "Connection established: ${newEndpoint.userName}"
+                        )
+                    )
+                }
             }
         }
 
         override fun onDisconnected(endpointId: String) {
             establishedConnections.remove(endpointId)
-            _processStateFlow.value = ProcessState(ProcessStateConstants.DONE, "Disconnected")
+            viewModelScope.launch() {
+                eventChannel.send(
+                    UIEvent.transitionState(
+                        ProcessStateConstants.DONE, "Disconnected"
+                    )
+                )
+            }
         }
 
 
@@ -173,6 +252,7 @@ class ConnectionViewModel @Inject constructor(
     fun provideConnectionsClient(connectionsClient: ConnectionsClient) {
         this.connectionsClient = connectionsClient
     }
+
     fun provideEndpointDiscoveryCallback(endpointDiscoveryCallback: EndpointDiscoveryCallback) {
         this.endpointDiscoveryCallback = endpointDiscoveryCallback
     }
@@ -194,12 +274,13 @@ class ConnectionViewModel @Inject constructor(
         super.onCleared()
     }
 
-    fun transitionToNewState(
+    fun triggerTransitionToNewState(
         newState: ProcessStateConstants,
         message: String = "OK"
     ) {
         // all the logic should be here
         // DO NOT CALL RECURSIVELY!
+        // ONLY CALL FROM View!
         when (newState) {
             ProcessStateConstants.AUTHENTICATION_REQUESTED -> {
                 _processStateFlow.value = ProcessState(newState, "Auth requested")
@@ -209,11 +290,15 @@ class ConnectionViewModel @Inject constructor(
             ProcessStateConstants.PERMISSIONS_GRANTED -> {
                 _processStateFlow.value = ProcessState(newState, "OK")
                 Log.d("SNDVM", "Permissions OK, automatically starting discovery...")
-                _processStateFlow.value = ProcessState(
-                    ProcessStateConstants.STARTING_DISCOVERY,
-                    message = "Automatically moving to discovery..."
-                )
-                startDiscovery()
+                viewModelScope.launch() {
+                    eventChannel.send(
+                        UIEvent.transitionState(
+                            ProcessStateConstants.STARTING_DISCOVERY,
+                            message = "Automatically moving to discovery..."
+                        )
+                    )
+                }
+//                startDiscovery()
             }
 
             ProcessStateConstants.PERMISSIONS_DENIED -> {
@@ -247,7 +332,10 @@ class ConnectionViewModel @Inject constructor(
                 val endpointId = message // probably should check that!
                 // find endpoint in discoveredEndpoints
                 val endpoint = discoveredEndpoints[endpointId]
-                _processStateFlow.value = ProcessState(ProcessStateConstants.PARTNER_CHOSEN, "Partner chosen: $message...")
+                _processStateFlow.value = ProcessState(
+                    ProcessStateConstants.PARTNER_CHOSEN,
+                    "Partner chosen: $message..."
+                )
                 if (endpoint != null) {
                     // initiate connection
                     connectionsClient.requestConnection(
@@ -268,13 +356,16 @@ class ConnectionViewModel @Inject constructor(
             ProcessStateConstants.AUTHENTICATION_OK -> {
                 val newEndpoint = discoveredEndpoints.remove(connectionInfo.value.endpointId)
                 pendingConnections[connectionInfo.value.endpointId] = newEndpoint!! // TODO
-                _processStateFlow.value = ProcessState(ProcessStateConstants.CONNECTING, connectionInfo.value.endpointId)
+                _processStateFlow.value =
+                    ProcessState(ProcessStateConstants.CONNECTING, connectionInfo.value.endpointId)
                 Log.d("SNDVM", "Now accepting the connection...")
                 connectionsClient.acceptConnection(connectionInfo.value.endpointId, payloadCallback)
             }
+
             ProcessStateConstants.AUTHENTICATION_DENIED -> {
                 Log.d("SNDVM", "Connection denied!")
-                _processStateFlow.value = ProcessState(ProcessStateConstants.DISCOVERY_STARTED, "Connection denied")
+                _processStateFlow.value =
+                    ProcessState(ProcessStateConstants.DISCOVERY_STARTED, "Connection denied")
             }
 
             ProcessStateConstants.CONNECTION_ESTABLISHED -> {
@@ -283,9 +374,15 @@ class ConnectionViewModel @Inject constructor(
 
             ProcessStateConstants.CONNECTION_DENIED -> TODO()
 
-            ProcessStateConstants.SENDING -> {
-                Log.d("SNDVM", "Will try and send $message...")
-                viewModelScope.launch {
+            ProcessStateConstants.DATA_RECEIVED -> {
+                Log.d("SNDVM", "Data received, now moving on...")
+                _processStateFlow.value =
+                    ProcessState(ProcessStateConstants.DATA_RECEIVED, "Data received.")
+            }
+
+//            ProcessStateConstants.SENDING -> {
+//                Log.d("SNDVM", "Will try and send $message...")
+//                viewModelScope.launch {
 //                    val process = repository.loadProcessByUuid(message)
 //                    if (process != null) {
 //                        establishedConnections.forEach{ connection ->
@@ -298,8 +395,8 @@ class ConnectionViewModel @Inject constructor(
 //                        }
 //                        _processStateFlow.value = ProcessState(ProcessStateConstants.CONNECTION_ESTABLISHED, "OK")
 //                    }
-                }
-            }
+//                }
+//            }
 
             ProcessStateConstants.DONE -> {
                 Log.d("SNDVM", "Done. Disconnecting everything...")
@@ -343,7 +440,9 @@ class ConnectionViewModel @Inject constructor(
         )
             .addOnSuccessListener { _ ->
                 Log.d("SNDVM", "Success! Discovery started")
-                transitionToNewState(ProcessStateConstants.DISCOVERY_STARTED)
+                viewModelScope.launch() {
+                    eventChannel.send(UIEvent.transitionState(ProcessStateConstants.DISCOVERY_STARTED))
+                }
             }
             .addOnFailureListener { e: Exception? ->
                 val errorMessage = "Error discovering" + if (e != null) {
@@ -352,10 +451,14 @@ class ConnectionViewModel @Inject constructor(
                     ""
                 }
                 Log.d("SNDVM", errorMessage)
-                transitionToNewState(
-                    ProcessStateConstants.ERROR,
-                    message = errorMessage
-                )
+                viewModelScope.launch() {
+                    eventChannel.send(
+                        UIEvent.transitionState(
+                            newState = ProcessStateConstants.ERROR,
+                            message = errorMessage
+                        )
+                    )
+                }
             }
     }
 

@@ -41,12 +41,12 @@ class Permissions(
         IndividualPermission(
             name = "android.permission.ACCESS_COARSE_LOCATION",
             minSdkVersion = MINSDKVERSION,
-            maxSdkVersion = 28
+            maxSdkVersion = 33
         ),
         IndividualPermission(
             name = "android.permission.ACCESS_FINE_LOCATION",
             minSdkVersion = 29,
-            maxSdkVersion = 31
+            maxSdkVersion = 33
         ),
         IndividualPermission(
             name = "android.permission.BLUETOOTH_ADVERTISE",
