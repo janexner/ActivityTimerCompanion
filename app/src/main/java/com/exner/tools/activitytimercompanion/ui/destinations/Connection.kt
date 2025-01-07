@@ -1,6 +1,7 @@
 package com.exner.tools.activitytimercompanion.ui.destinations
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -24,10 +25,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,7 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exner.tools.activitytimercompanion.R
 import com.exner.tools.activitytimercompanion.network.Permissions
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
-import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.ConnectionViewModel
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
@@ -164,7 +167,9 @@ fun ConnectionMainView(
     //
     // Top part - status and info
     //
-    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.7f)) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .fillMaxHeight(0.7f)) {
         // UI, depending on state
         when (processStateCurrent) {
             ProcessStateConstants.AWAITING_PERMISSIONS, ProcessStateConstants.PERMISSIONS_DENIED -> {
@@ -275,7 +280,11 @@ fun ConnectionMainView(
     // middle part - found partner(s)
     //
     DefaultSpacer()
-    LazyColumn( modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f)) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth()
@@ -291,23 +300,32 @@ fun ConnectionMainView(
         items(
             items = discoveredEndpoints,
             key = { it.endpointId }) { endpoint ->
-            Row(
-                modifier = Modifier.fillMaxWidth()
+            OutlinedCard(
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
+                ),
+                modifier = Modifier
+                    .fillMaxSize(),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface),
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.baseline_tv_24),
-                    contentDescription = null
-                )
-                IconSpacer()
-                Box(modifier = Modifier
-                    .padding(PaddingValues(8.dp))
-                    .clickable {
-                        triggerTransitionToNewState(
-                            ProcessStateConstants.PARTNER_CHOSEN,
-                            endpoint.endpointId
-                        )
-                    }) {
-                    Text(text = "Activity Timer for TV ID: ${endpoint.endpointId}")
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.baseline_tv_24),
+                        contentDescription = null
+                    )
+                    IconSpacer()
+                    Box(modifier = Modifier
+                        .padding(PaddingValues(8.dp))
+                        .clickable {
+                            triggerTransitionToNewState(
+                                ProcessStateConstants.PARTNER_CHOSEN,
+                                endpoint.endpointId
+                            )
+                        }) {
+                        Text(text = "Activity Timer for TV ID: ${endpoint.endpointId}")
+                    }
                 }
             }
         }
