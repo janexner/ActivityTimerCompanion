@@ -20,7 +20,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EditorFrontDoorViewModel
 import com.google.android.gms.nearby.Nearby
-import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.CategoryListDestination
