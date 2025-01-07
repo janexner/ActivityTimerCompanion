@@ -50,6 +50,7 @@ import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.ConnectionViewModel
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
+import com.exner.tools.activitytimercompanion.ui.IconSpacer
 import com.exner.tools.activitytimercompanion.ui.ProcessState
 import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -283,7 +284,7 @@ fun ConnectionMainView(
                     painter = painterResource(id = R.drawable.baseline_hourglass_empty_24),
                     contentDescription = null
                 )
-                DefaultSpacer()
+                IconSpacer()
                 Text(text = "No TV found so far...")
             }
         }
@@ -297,7 +298,7 @@ fun ConnectionMainView(
                     painter = painterResource(id = R.drawable.baseline_tv_24),
                     contentDescription = null
                 )
-                DefaultSpacer()
+                IconSpacer()
                 Box(modifier = Modifier
                     .padding(PaddingValues(8.dp))
                     .clickable {
