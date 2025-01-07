@@ -3,7 +3,6 @@ package com.exner.tools.activitytimercompanion.network
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import androidx.core.content.ContextCompat
 
 private const val MINSDKVERSION = 28
@@ -79,7 +78,6 @@ class Permissions(
                 allNecessaryPermissionsAsListOfStrings.add(individualPermission.name)
                 val checkResult =
                     ContextCompat.checkSelfPermission(context, individualPermission.name)
-                Log.d("PERMISSIONS", "Permission ${individualPermission.name} is $checkResult")
                 if (checkResult == PackageManager.PERMISSION_DENIED) {
                     missingPermissions.add(individualPermission)
                 } else if (checkResult == PackageManager.PERMISSION_GRANTED) {
@@ -93,11 +91,4 @@ class Permissions(
         return allNecessaryPermissionsAsListOfStrings
     }
 
-    fun doWeHaveAllPermissions(): Boolean {
-        return (0 == missingPermissions.size)
-    }
-
-    fun getMissingPermissions(): List<IndividualPermission> {
-        return missingPermissions
-    }
 }

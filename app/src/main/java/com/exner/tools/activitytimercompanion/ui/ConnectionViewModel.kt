@@ -80,7 +80,7 @@ enum class ProcessStateConstants {
  *
  */
 
-const val endpointId: String = "com.exner.tools.ActivityTimer.Companion"
+const val serviceId: String = "com.exner.tools.ActivityTimer.Companion"
 const val userName: String = "Activity Timer Companion"
 const val checkInterval: Long = 500 // this should be milliseconds
 
@@ -97,7 +97,6 @@ data class EndpointConnectionInformation(
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
-    private val repository: TimerDataRepository
 ) : ViewModel() {
 
     private val _processStateFlow = MutableStateFlow(ProcessState())
@@ -119,31 +118,17 @@ class ConnectionViewModel @Inject constructor(
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             Log.d("CVMPC", "Payload received ${payload.id}")
             if (payload.type == Payload.Type.BYTES) {
-                val allDataJson: String = String(payload.asBytes()!!, UTF_8)
-                val allData = adapter.fromJson(allDataJson)
-                if (allData != null) {
-                    Log.d(
-                        "CVMPC",
-                        "Received ${allData.processes.size} processes and ${allData.categories.size} categories."
+                val payloadJson: String = String(payload.asBytes()!!, UTF_8)
+                val testPL = adapter.fromJson(payloadJson)
+                viewModelScope.launch() {
+                    eventChannel.send(
+                        UIEvent.transitionState(
+                            ProcessStateConstants.DATA_RECEIVED,
+                            "Data received"
+                        )
                     )
-                    viewModelScope.launch() {
-                        allData.categories.forEach { category ->
-                            repository.insertCategory(category = category)
-                        }
-                        allData.processes.forEach { process ->
-                            repository.insert(process)
-                        }
-                        Log.d("CVMPCasync", "Inserted all data into DB.")
-                        viewModelScope.launch() {
-                            eventChannel.send(
-                                UIEvent.transitionState(
-                                    ProcessStateConstants.DATA_RECEIVED,
-                                    "Data received"
-                                )
-                            )
-                        }
-                    }
                 }
+                Log.d("CVMPC", "received $testPL")
             } else {
                 Log.d("CVMPC", "Payload received from $endpointId but wrong type: $payload")
             }
@@ -258,6 +243,12 @@ class ConnectionViewModel @Inject constructor(
     }
 
     val discoveredEndpoints: MutableMap<String, TimerEndpoint> = mutableMapOf()
+    fun addDiscoveredEndpointToList(endpoint: TimerEndpoint) {
+        discoveredEndpoints.put(endpoint.endpointId, endpoint)
+    }
+    fun removeDiscoveredEndpointFromList(endpointId: String) {
+        discoveredEndpoints.remove(endpointId)
+    }
     val pendingConnections: MutableMap<String, TimerEndpoint> = mutableMapOf()
     val establishedConnections: MutableMap<String, TimerEndpoint> = mutableMapOf()
 
@@ -416,7 +407,7 @@ class ConnectionViewModel @Inject constructor(
             DiscoveryOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT)
                 .build()
         connectionsClient.startDiscovery(
-            endpointId,
+            serviceId,
             object : EndpointDiscoveryCallback() {
                 override fun onEndpointFound(
                     endpointId: String,

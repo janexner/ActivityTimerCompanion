@@ -1,11 +1,15 @@
 package com.exner.tools.activitytimercompanion.ui.destinations
 
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,46 +32,42 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.exner.tools.activitytimercompanion.R
 import com.exner.tools.activitytimercompanion.network.Permissions
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
+import com.exner.tools.activitytimercompanion.ui.BodyText
 import com.exner.tools.activitytimercompanion.ui.ConnectionViewModel
+import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
+import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
+import com.exner.tools.activitytimercompanion.ui.ProcessState
+import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.exner.tools.activitytimercompanion.ui.BodyText
-import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
-import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
-import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
-import com.exner.tools.activitytimercompanion.ui.ProcessState
-import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
-import com.exner.tools.activitytimercompanion.ui.UIEvent
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.ramcosta.composedestinations.generated.destinations.EditorFrontDoorDestination
-import kotlinx.coroutines.flow.collect
-
+import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Destination<RootGraph>
 @Composable
 fun Connection(
     connectionViewModel: ConnectionViewModel = hiltViewModel(),
-    mainActivityViewModel: MainActivityViewModel = hiltViewModel(),
     navigator: DestinationsNavigator
 ) {
     val context = LocalContext.current
@@ -75,7 +75,12 @@ fun Connection(
 
     val permissionsNeeded =
         rememberMultiplePermissionsState(
-            permissions = permissions.getAllNecessaryPermissionsAsListOfStrings()
+            permissions = permissions.getAllNecessaryPermissionsAsListOfStrings(),
+            onPermissionsResult = { results ->
+                results.forEach { result ->
+                    Log.d("C PERMISSIONS", "${result.key} : ${result.value}")
+                }
+            }
         )
 
     val processState by connectionViewModel.processStateFlow.collectAsState()
@@ -83,58 +88,34 @@ fun Connection(
     val connectionsClient = Nearby.getConnectionsClient(context)
     connectionViewModel.provideConnectionsClient(connectionsClient = connectionsClient)
 
-    val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
-        override fun onEndpointFound(endpointId: String, endpointInfo: DiscoveredEndpointInfo) {
-            Log.d("TEDC", "On Endpoint Found... $endpointId / ${endpointInfo.endpointName}")
-
-            // An endpoint was found. We request a connection to it.
-            val endpoint = TimerEndpoint(endpointId, endpointInfo.endpointName)
-
-            connectionsClient.requestConnection(
-                endpoint.userName,
-                endpoint.endpointId,
-                connectionViewModel.timerLifecycleCallback
-            )
-                .addOnSuccessListener { _: Void? ->
-                    Log.d("TEDC", "Connection request succeeded!")
-                    mainActivityViewModel.updateConnectedToTV(connectedToTV = true)
-                }
-                .addOnFailureListener { e: Exception? ->
-                    if (e != null) {
-                        Log.d("TEDC", "Connection failed: ${e.message}")
-                    }
-                    mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
-                }
-
-        }
-
-        override fun onEndpointLost(endpointId: String) {
-            Log.d("TEDC", "On Endpoint Lost... $endpointId")
-            mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
-        }
-    }
-    connectionViewModel.provideEndpointDiscoveryCallback(endpointDiscoveryCallback)
-
     val discoveredEndpoints: List<TimerEndpoint> by connectionViewModel.endpointsFound.collectAsStateWithLifecycle(
         initialValue = emptyList()
     )
 
-    val openAuthenticationDialog = remember { mutableStateOf(false) }
-    val connectionInfo by connectionViewModel.connectionInfo.collectAsState()
+    val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
+        override fun onEndpointFound(endpointId: String, endpointInfo: DiscoveredEndpointInfo) {
+            Log.d("TEDC", "On Endpoint Found... $endpointId / ${endpointInfo.endpointName}")
+            val endpoint = TimerEndpoint(endpointId, endpointInfo.endpointName)
+            connectionViewModel.addDiscoveredEndpointToList(endpoint)
+        }
+
+        override fun onEndpointLost(endpointId: String) {
+            Log.d("TEDC", "On Endpoint Lost... $endpointId")
+            connectionViewModel.removeDiscoveredEndpointFromList(endpointId)
+        }
+    }
+    connectionViewModel.provideEndpointDiscoveryCallback(endpointDiscoveryCallback)
+
+    val connectionInfo = connectionViewModel.connectionInfo.collectAsStateWithLifecycle()
 
     // some sanity checking for state
     if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS && permissionsNeeded.allPermissionsGranted) {
         connectionViewModel.triggerTransitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
     } else if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS) {
-        Log.d("STND", "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}")
-    }
-
-    LaunchedEffect(Unit) {
-        connectionViewModel.events.collect { event ->
-            if (event is UIEvent.transitionState) {
-                Log.d("CLE", "VM says we need to transition to ${event.newState}")
-            }
-        }
+        Log.d(
+            "STND",
+            "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}"
+        )
     }
 
     Scaffold(
@@ -145,112 +126,15 @@ fun Connection(
                     .padding(8.dp)
                     .fillMaxSize()
             ) {
-                // UI, depending on state
-                when (processState.currentState) {
-                    ProcessStateConstants.AWAITING_PERMISSIONS -> {
-                        ProcessStateAwaitingPermissionsScreen(permissionsNeeded)
-                    }
-
-                    ProcessStateConstants.PERMISSIONS_GRANTED -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "All permissions OK.")
-                        }
-                    }
-
-                    ProcessStateConstants.PERMISSIONS_DENIED -> {
-                        ProcessStateAwaitingPermissionsScreen(permissionsNeeded)
-                    }
-
-                    ProcessStateConstants.STARTING_DISCOVERY -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Looking for a TV now...")
-                            DefaultSpacer()
-                            Text(text = "Make sure the Activity Timer app is running on your TV!")
-                        }
-                    }
-
-                    ProcessStateConstants.DISCOVERY_STARTED -> {
-                        ProcessStateDiscoveryStartedScreen(discoveredEndpoints) { endpointId ->
-                            connectionViewModel.triggerTransitionToNewState(
-                                ProcessStateConstants.PARTNER_CHOSEN,
-                                endpointId
-                            )
-                        }
-                    }
-
-                    ProcessStateConstants.PARTNER_CHOSEN -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Connecting to partner ${processState.message}...")
-                        }
-                    }
-
-                    ProcessStateConstants.CONNECTING -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Connecting to partner ${processState.message}...")
-                        }
-                    }
-
-                    ProcessStateConstants.AUTHENTICATION_REQUESTED -> {
-                        openAuthenticationDialog.value = true
-                        ProcessStateAuthenticationRequestedScreen(
-                            openAuthenticationDialog = openAuthenticationDialog.value,
-                            info = connectionInfo,
-                            confirmCallback = {
-                                openAuthenticationDialog.value = false
-                                connectionViewModel.triggerTransitionToNewState(
-                                    ProcessStateConstants.AUTHENTICATION_OK,
-                                    "Accepted"
-                                )
-                            },
-                            dismissCallback = {
-                                openAuthenticationDialog.value = false
-                                connectionViewModel.triggerTransitionToNewState(
-                                    ProcessStateConstants.AUTHENTICATION_DENIED,
-                                    "Denied"
-                                )
-                            }
-                        )
-                    }
-
-                    ProcessStateConstants.AUTHENTICATION_OK -> {}
-                    ProcessStateConstants.AUTHENTICATION_DENIED -> {}
-
-                    ProcessStateConstants.CONNECTION_ESTABLISHED -> {
-                        // TODO
-                        mainActivityViewModel.updateConnectedToTV(connectedToTV = true)
-                    }
-
-                    ProcessStateConstants.CONNECTION_DENIED -> {}
-
-                    ProcessStateConstants.DATA_RECEIVED -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Data received.")
-                        }
-                    }
-//                    ProcessStateConstants.SENDING -> {}
-
-                    ProcessStateConstants.DONE -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "All done.")
-                        }
-                    }
-
-                    ProcessStateConstants.CANCELLED -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Cancelled.")
-                        }
-                        mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
-                    }
-
-                    ProcessStateConstants.ERROR -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Text(text = "Some error occurred. It may help to move away from this screen and try it all again.")
-                            DefaultSpacer()
-                            Text(text = processState.message)
-                        }
-                        mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
-                    }
-                }
+                ConnectionMainView(
+                    processStateCurrent = processState.currentState,
+                    processStateMessage = processState.message,
+                    launchMultiplePermissionRequest = permissionsNeeded::launchMultiplePermissionRequest,
+                    discoveredEndpoints = discoveredEndpoints,
+                    navigator = navigator,
+                    triggerTransitionToNewState = connectionViewModel::triggerTransitionToNewState,
+                    connectionInfo = connectionInfo
+                )
             }
         },
         bottomBar = {
@@ -263,83 +147,174 @@ fun Connection(
     )
 }
 
-@Composable
-fun ProcessStateAuthenticationRequestedScreen(
-    openAuthenticationDialog: Boolean,
-    info: EndpointConnectionInformation,
-    confirmCallback: () -> Unit,
-    dismissCallback: () -> Unit
-) {
-    if (openAuthenticationDialog) {
-        AlertDialog(
-            title = { Text(text = "Accept connection to " + info.endpointName) },
-            text = { Text(text = "Confirm the code matches on both devices: " + info.authenticationDigits) },
-            icon = { Icon(imageVector = Icons.Default.Warning, contentDescription = "Alert") },
-            onDismissRequest = { dismissCallback() },
-            confirmButton = { TextButton(onClick = { confirmCallback() }) {
-                Text(text = "Accept")
-            } },
-            dismissButton = { TextButton(onClick = { dismissCallback() }) {
-                Text(text = "Decline")
-            } }
-        )
-    }
-}
-
-@Composable
-fun ProcessConnectionEstablished(
-    onItemClick : (String) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .padding(PaddingValues(8.dp))
-            .fillMaxSize()
-    ) {
-        item {
-            Text(text = "Connected to ")
-        }
-    }
-}
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun ProcessStateAwaitingPermissionsScreen(permissionsNeeded: MultiplePermissionsState) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
-        DefaultSpacer()
-        Button(
-            onClick = {
-                permissionsNeeded.launchMultiplePermissionRequest()
-            }
-        ) {
-            Text(text = "Request permissions")
-        }
-    }
-}
-
-@Composable
-private fun ProcessStateDiscoveryStartedScreen(
+fun ConnectionMainView(
+    processStateCurrent: ProcessStateConstants,
+    processStateMessage: String = "OK",
+    launchMultiplePermissionRequest: () -> Unit,
     discoveredEndpoints: List<TimerEndpoint>,
-    onItemClick : (String) -> Unit
+    navigator: DestinationsNavigator,
+    triggerTransitionToNewState: (ProcessStateConstants, String) -> Unit,
+    connectionInfo: State<EndpointConnectionInformation>
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .padding(PaddingValues(8.dp))
-            .fillMaxSize()
-    ) {
-        item {
-            Text(text = "Looking for a TV running Activity Timer... once found, tap to connect.")
-        }
-        items(items = discoveredEndpoints, key = {it.endpointId}) { endpoint ->
-            Box(modifier = Modifier
-                .padding(PaddingValues(8.dp))
-                .clickable {
-                    onItemClick(endpoint.endpointId)
-                }) {
-                BodyText(text = "Activity Timer for TV ID: ${endpoint.endpointId}")
+    val openAuthenticationDialog = remember { mutableStateOf(false) }
+
+    //
+    // Top part - status and info
+    //
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.7f)) {
+        // UI, depending on state
+        when (processStateCurrent) {
+            ProcessStateConstants.AWAITING_PERMISSIONS, ProcessStateConstants.PERMISSIONS_DENIED -> {
+                Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
+                DefaultSpacer()
+                Button(
+                    onClick = {
+                        launchMultiplePermissionRequest()
+                    }
+                ) {
+                    Text(text = "Request permissions")
+                }
+            }
+
+            ProcessStateConstants.PERMISSIONS_GRANTED -> {
+                Text(text = "All permissions OK.")
+            }
+
+            ProcessStateConstants.STARTING_DISCOVERY -> {
+                Text(text = "Looking for a TV now...")
+                DefaultSpacer()
+                Text(text = "Make sure the Activity Timer app is running on your TV!")
+            }
+
+            ProcessStateConstants.DISCOVERY_STARTED -> {
+                Text(text = "Looking for a TV running Activity Timer... once found, tap to connect.")
+            }
+
+            ProcessStateConstants.PARTNER_CHOSEN -> {
+                Text(text = "Connecting to partner $processStateMessage...")
+            }
+
+            ProcessStateConstants.CONNECTING -> {
+                Text(text = "Connecting to partner $processStateMessage...")
+            }
+
+            ProcessStateConstants.AUTHENTICATION_REQUESTED -> {
+                openAuthenticationDialog.value = true
+                val dismissCallback = {
+                    openAuthenticationDialog.value = false
+                    triggerTransitionToNewState(
+                        ProcessStateConstants.AUTHENTICATION_DENIED,
+                        "Denied"
+                    )
+                }
+                if (openAuthenticationDialog.value) {
+                    AlertDialog(
+                        title = { Text(text = "Accept connection to " + connectionInfo.value.endpointName) },
+                        text = { Text(text = "Confirm the code matches on both devices: " + connectionInfo.value.authenticationDigits) },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Alert"
+                            )
+                        },
+                        onDismissRequest = { dismissCallback() },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                openAuthenticationDialog.value = false
+                                triggerTransitionToNewState(
+                                    ProcessStateConstants.AUTHENTICATION_OK,
+                                    "Accepted"
+                                )
+                            }) {
+                                Text(text = "Accept")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { dismissCallback() }) {
+                                Text(text = "Decline")
+                            }
+                        }
+                    )
+                }
+            }
+
+            ProcessStateConstants.AUTHENTICATION_OK -> {}
+            ProcessStateConstants.AUTHENTICATION_DENIED -> {}
+
+            ProcessStateConstants.CONNECTION_ESTABLISHED -> {
+                // TODO
+                navigator.navigate(EditorFrontDoorDestination())
+            }
+
+            ProcessStateConstants.CONNECTION_DENIED -> {}
+
+            ProcessStateConstants.DATA_RECEIVED -> {
+                Text(text = "Data received.")
+            }
+//                    ProcessStateConstants.SENDING -> {}
+
+            ProcessStateConstants.DONE -> {
+                Text(text = "All done.")
+            }
+
+            ProcessStateConstants.CANCELLED -> {
+                Text(text = "Cancelled.")
+            }
+
+            ProcessStateConstants.ERROR -> {
+                Text(text = "Some error occurred. It may help to move away from this screen and try it all again.")
+                DefaultSpacer()
+                Text(text = processStateMessage)
             }
         }
     }
+    //
+    // middle part - found partner(s)
+    //
+    DefaultSpacer()
+    LazyColumn( modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f)) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_hourglass_empty_24),
+                    contentDescription = null
+                )
+                DefaultSpacer()
+                Text(text = "No TV found so far...")
+            }
+        }
+        items(
+            items = discoveredEndpoints,
+            key = { it.endpointId }) { endpoint ->
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_tv_24),
+                    contentDescription = null
+                )
+                DefaultSpacer()
+                Box(modifier = Modifier
+                    .padding(PaddingValues(8.dp))
+                    .clickable {
+                        triggerTransitionToNewState(
+                            ProcessStateConstants.PARTNER_CHOSEN,
+                            endpoint.endpointId
+                        )
+                    }) {
+                    Text(text = "Activity Timer for TV ID: ${endpoint.endpointId}")
+                }
+            }
+        }
+    }
+    //
+    // bottom part - BottomBar
+    //
+
 }
 
 @Composable
@@ -377,6 +352,7 @@ fun ConnectionBottomBar(
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                     )
                 }
+
                 ProcessStateConstants.PERMISSIONS_GRANTED -> {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Discover Devices") },
@@ -425,6 +401,7 @@ fun ConnectionBottomBar(
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                     )
                 }
+
                 ProcessStateConstants.CONNECTION_ESTABLISHED -> {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Done") },
@@ -441,6 +418,7 @@ fun ConnectionBottomBar(
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                     )
                 }
+
                 ProcessStateConstants.DONE, ProcessStateConstants.CANCELLED -> {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Go back") },
@@ -451,12 +429,13 @@ fun ConnectionBottomBar(
                             )
                         },
                         onClick = {
-                            navigator.navigateUp()
+                            navigator.popBackStack(WelcomeDestination, inclusive = false)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                     )
                 }
+
                 else -> {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Cancel") },

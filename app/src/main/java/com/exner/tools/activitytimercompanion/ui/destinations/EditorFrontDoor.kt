@@ -14,36 +14,29 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.exner.tools.activitytimercompanion.data.persistence.TimerProcess
-import com.exner.tools.activitytimercompanion.data.persistence.TimerProcessCategory
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EditorFrontDoorViewModel
-import com.exner.tools.activitytimercompanion.ui.ProcessListViewModel
+import com.google.android.gms.nearby.Nearby
+import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.CategoryListDestination
 import com.ramcosta.composedestinations.generated.destinations.ProcessListDestination
+import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @Destination<RootGraph>
 @Composable
 fun EditorFrontDoor(
     editorFrontDoorViewModel: EditorFrontDoorViewModel = hiltViewModel(),
-    processListViewModel: ProcessListViewModel = hiltViewModel(),
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
 ) {
-
-    val processes: List<TimerProcess> by processListViewModel.observeProcessesRaw.collectAsStateWithLifecycle(
-        initialValue = emptyList()
-    )
-
-    val categories: List<TimerProcessCategory> by processListViewModel.observeCategoriesRaw.collectAsStateWithLifecycle(
-        initialValue = emptyList()
-    )
+    val context = LocalContext.current
+    val connectionsClient = Nearby.getConnectionsClient(context)
+    editorFrontDoorViewModel.provideConnectionsClient(connectionsClient)
 
     Scaffold(
         content = { innerPadding ->
@@ -77,12 +70,12 @@ fun EditorFrontDoor(
                 },
                 floatingActionButton = {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = "Disconnect") },
+                        text = { Text(text = "Done") },
                         icon = {
-                            Icon(Icons.Default.Done, "Disconnect")
+                            Icon(Icons.Default.Done, "Done")
                         },
                         onClick = {
-                            navigator.navigateUp()
+                            navigator.popBackStack(WelcomeDestination, inclusive = false)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
@@ -92,3 +85,4 @@ fun EditorFrontDoor(
         }
     )
 }
+
