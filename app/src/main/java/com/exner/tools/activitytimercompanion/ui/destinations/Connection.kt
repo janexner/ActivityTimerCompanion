@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exner.tools.activitytimercompanion.R
 import com.exner.tools.activitytimercompanion.network.Permissions
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
+import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
 import com.exner.tools.activitytimercompanion.ui.ConnectionViewModel
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
@@ -75,7 +76,8 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 @Composable
 fun Connection(
     connectionViewModel: ConnectionViewModel = hiltViewModel(),
-    navigator: DestinationsNavigator
+    navigator: DestinationsNavigator,
+    tvConnectionStateHolder: TVConnectionStateHolder
 ) {
     val context = LocalContext.current
     val permissions = Permissions(context = context)
@@ -123,6 +125,13 @@ fun Connection(
             "STND",
             "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}"
         )
+    }
+
+    // TODO
+    val tvConnectionState by tvConnectionStateHolder.tvConnectionState.collectAsState()
+    if (tvConnectionState.isConnectedToTV == true) {
+        // we should NOT be here! so let's move to the EditorFrontDoor
+        navigator.navigate(EditorFrontDoorDestination)
     }
 
     Scaffold(
@@ -262,6 +271,7 @@ fun ConnectionMainView(
 
             ProcessStateConstants.CONNECTION_ESTABLISHED -> {
                 // TODO
+                // TODO update tvConnectionState
                 navigator.navigate(EditorFrontDoorDestination())
             }
 

@@ -14,15 +14,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EditorFrontDoorViewModel
 import com.google.android.gms.nearby.Nearby
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.CategoryListDestination
+import com.ramcosta.composedestinations.generated.destinations.ConnectionDestination
 import com.ramcosta.composedestinations.generated.destinations.ProcessListDestination
 import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -32,10 +36,17 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 fun EditorFrontDoor(
     editorFrontDoorViewModel: EditorFrontDoorViewModel = hiltViewModel(),
     navigator: DestinationsNavigator,
+    tvConnectionStateHolder: TVConnectionStateHolder
 ) {
     val context = LocalContext.current
     val connectionsClient = Nearby.getConnectionsClient(context)
     editorFrontDoorViewModel.provideConnectionsClient(connectionsClient)
+
+    val tvConnectionState by tvConnectionStateHolder.tvConnectionState.collectAsState()
+    if (tvConnectionState.isConnectedToTV == false) {
+        // we should NOT be here! so let's move to the Connection screen
+        navigator.navigate(ConnectionDestination)
+    }
 
     Scaffold(
         content = { innerPadding ->
@@ -74,6 +85,7 @@ fun EditorFrontDoor(
                             Icon(Icons.Default.Done, "Done")
                         },
                         onClick = {
+                            tvConnectionStateHolder.updateTVConnectionState(isConnectedToTV = false)
                             navigator.popBackStack(WelcomeDestination, inclusive = false)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
