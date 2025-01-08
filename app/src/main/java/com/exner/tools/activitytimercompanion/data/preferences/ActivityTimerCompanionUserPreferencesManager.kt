@@ -1,7 +1,6 @@
 package com.exner.tools.activitytimercompanion.data.preferences
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -38,23 +37,7 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
         }
     }
 
-    fun chainToSameCategoryOnly(): Flow<Boolean> {
-        return userDataStorePreferences.data.catch {
-            emit(emptyPreferences())
-        }.map { preferences ->
-            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] == true
-        }
-    }
-
-    suspend fun setChainToSameCategoryOnly(newChainToSameOnly: Boolean) {
-        userDataStorePreferences.edit { preferences ->
-            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] = newChainToSameOnly
-        }
-    }
-
     private companion object {
         val KEY_THEME = stringPreferencesKey(name = "preference_theme")
-        val KEY_CHAIN_TO_SAME_CATEGORY_ONLY =
-            booleanPreferencesKey(name = "chain_to_same_category_only")
     }
 }

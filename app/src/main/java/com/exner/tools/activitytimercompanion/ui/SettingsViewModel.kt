@@ -23,22 +23,11 @@ class SettingsViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(),
         Theme.Auto
     )
-    val chainToSameCategoryOnly: StateFlow<Boolean> = userPreferencesManager.chainToSameCategoryOnly().stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(),
-        false
-    )
 
     fun updateUserSelectedTheme(newTheme: Theme) {
         viewModelScope.launch {
             userPreferencesManager.setTheme(newTheme)
         }
         themeStateHolder.updateTheme(newTheme)
-    }
-
-    fun updateChainToSameCategoryOnly(newChainToSameOnly: Boolean) {
-        viewModelScope.launch {
-            userPreferencesManager.setChainToSameCategoryOnly(newChainToSameOnly)
-        }
     }
 }

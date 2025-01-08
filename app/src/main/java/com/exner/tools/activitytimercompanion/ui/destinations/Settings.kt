@@ -23,7 +23,6 @@ fun Settings(
 ) {
 
     val userSelectedTheme by settingsViewModel.userSelectedTheme.collectAsStateWithLifecycle()
-    val chainToSameCategoryOnly by settingsViewModel.chainToSameCategoryOnly.collectAsStateWithLifecycle()
 
     // show vertically
     Column(
@@ -40,12 +39,6 @@ fun Settings(
                 )
             }
         )
-        TextAndSwitch(
-            text = "Chain to same category only",
-            checked = chainToSameCategoryOnly
-        ) {
-            settingsViewModel.updateChainToSameCategoryOnly(it)
-        }
     }
 
 }
