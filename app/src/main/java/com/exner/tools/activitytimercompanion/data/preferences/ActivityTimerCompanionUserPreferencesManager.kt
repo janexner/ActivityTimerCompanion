@@ -28,9 +28,7 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
         return userDataStorePreferences.data.catch {
             emit(emptyPreferences())
         }.map { preferences ->
-            val wasDark = preferences[KEY_NIGHT_MODE] == true
-            val default = if (wasDark) Theme.Dark.name else Theme.Auto.name
-            Theme.valueOf(preferences[KEY_THEME] ?: default)
+            Theme.valueOf(preferences[KEY_THEME] ?: Theme.Auto.name)
         }
     }
 
@@ -58,7 +56,7 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
         return userDataStorePreferences.data.catch {
             emit(emptyPreferences())
         }.map { preferences ->
-            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] ?: false
+            preferences[KEY_CHAIN_TO_SAME_CATEGORY_ONLY] == true
         }
     }
 
@@ -69,8 +67,6 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
     }
 
     private companion object {
-
-        val KEY_NIGHT_MODE = booleanPreferencesKey(name = "preference_night_mode")
         val KEY_THEME = stringPreferencesKey(name = "preference_theme")
         val KEY_SIMPLE_DISPLAY = booleanPreferencesKey(name = "simple_display")
         val KEY_CHAIN_TO_SAME_CATEGORY_ONLY =
