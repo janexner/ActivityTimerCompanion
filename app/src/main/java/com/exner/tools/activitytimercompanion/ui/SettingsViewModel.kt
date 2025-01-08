@@ -23,11 +23,6 @@ class SettingsViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(),
         Theme.Auto
     )
-    val showSimpleDisplay: StateFlow<Boolean> = userPreferencesManager.showSimpleDisplay().stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(),
-        true
-    )
     val chainToSameCategoryOnly: StateFlow<Boolean> = userPreferencesManager.chainToSameCategoryOnly().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(),
@@ -39,12 +34,6 @@ class SettingsViewModel @Inject constructor(
             userPreferencesManager.setTheme(newTheme)
         }
         themeStateHolder.updateTheme(newTheme)
-    }
-
-    fun updateShowSimpleDisplay(newSimpleDisplay: Boolean) {
-        viewModelScope.launch {
-            userPreferencesManager.setShowSimpleDisplay(newSimpleDisplay)
-        }
     }
 
     fun updateChainToSameCategoryOnly(newChainToSameOnly: Boolean) {

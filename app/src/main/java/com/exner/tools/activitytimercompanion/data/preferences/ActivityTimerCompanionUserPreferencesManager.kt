@@ -38,20 +38,6 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
         }
     }
 
-    fun showSimpleDisplay(): Flow<Boolean> {
-        return userDataStorePreferences.data.catch {
-            emit(emptyPreferences())
-        }.map { preferences ->
-            preferences[KEY_SIMPLE_DISPLAY] != false
-        }
-    }
-
-    suspend fun setShowSimpleDisplay(newShowSimpleDisplay: Boolean) {
-        userDataStorePreferences.edit { preferences ->
-            preferences[KEY_SIMPLE_DISPLAY] = newShowSimpleDisplay
-        }
-    }
-
     fun chainToSameCategoryOnly(): Flow<Boolean> {
         return userDataStorePreferences.data.catch {
             emit(emptyPreferences())
@@ -68,7 +54,6 @@ class ActivityTimerCompanionUserPreferencesManager @Inject constructor(
 
     private companion object {
         val KEY_THEME = stringPreferencesKey(name = "preference_theme")
-        val KEY_SIMPLE_DISPLAY = booleanPreferencesKey(name = "simple_display")
         val KEY_CHAIN_TO_SAME_CATEGORY_ONLY =
             booleanPreferencesKey(name = "chain_to_same_category_only")
     }

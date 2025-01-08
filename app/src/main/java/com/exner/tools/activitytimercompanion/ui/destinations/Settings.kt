@@ -23,7 +23,6 @@ fun Settings(
 ) {
 
     val userSelectedTheme by settingsViewModel.userSelectedTheme.collectAsStateWithLifecycle()
-    val showSimpleDisplay by settingsViewModel.showSimpleDisplay.collectAsStateWithLifecycle()
     val chainToSameCategoryOnly by settingsViewModel.chainToSameCategoryOnly.collectAsStateWithLifecycle()
 
     // show vertically
@@ -41,9 +40,6 @@ fun Settings(
                 )
             }
         )
-        TextAndSwitch(text = "Simplify Display", checked = showSimpleDisplay) {
-            settingsViewModel.updateShowSimpleDisplay(it)
-        }
         TextAndSwitch(
             text = "Chain to same category only",
             checked = chainToSameCategoryOnly
