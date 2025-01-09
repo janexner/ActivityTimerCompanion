@@ -52,14 +52,6 @@ object PermissionsGrantedWrapper : DestinationWrapper {
                         .fillMaxSize()
                 ) {
                     Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
-                    DefaultSpacer()
-                    Button(
-                        onClick = {
-                            permissionsNeeded.launchMultiplePermissionRequest()
-                        }
-                    ) {
-                        Text(text = "Request permissions")
-                    }
                 }
             },
             bottomBar = {
