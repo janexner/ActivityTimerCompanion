@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
-class ThemeStateHolderImpl @Inject constructor(
-) : ThemeStateHolder {
+class ThemeStateHolderImpl @Inject constructor() : ThemeStateHolder {
     private val _themeState = MutableStateFlow(ThemeState())
     override val themeState: StateFlow<ThemeState> = _themeState
 

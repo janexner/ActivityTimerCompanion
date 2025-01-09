@@ -85,7 +85,7 @@ fun EditorFrontDoor(
                             Icon(Icons.Default.Done, "Done")
                         },
                         onClick = {
-                            tvConnectionStateHolder.updateTVConnectionState(isConnectedToTV = false)
+                            tvConnectionStateHolder.updateTVConnection(isConnectedToTV = false)
                             navigator.popBackStack(WelcomeDestination, inclusive = false)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,

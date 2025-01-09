@@ -53,13 +53,10 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 @Composable
 fun ProcessEdit(
     processUuid: String?,
-    settingsViewModel: SettingsViewModel = hiltViewModel(),
     navigator: DestinationsNavigator
 ) {
-    val chainToSameCategoryOnly by settingsViewModel.chainToSameCategoryOnly.collectAsStateWithLifecycle()
-
     val processEditViewModel = hiltViewModel<ProcessEditViewModel, ProcessEditViewModel.ProcessEditViewModelFactory> { factory ->
-        factory.create(processUuid, chainToSameCategoryOnly)
+        factory.create(processUuid)
     }
 
     val name by processEditViewModel.name.observeAsState()
@@ -158,8 +155,7 @@ fun ProcessEdit(
                             text = { Text(text = "None") },
                             onClick = {
                                 processEditViewModel.updateCategoryId(
-                                    -1L,
-                                    chainToSameCategoryOnly
+                                    -1L
                                 )
                                 modified = true
                                 categoryExpanded = false
@@ -172,7 +168,6 @@ fun ProcessEdit(
                                 onClick = {
                                     processEditViewModel.updateCategoryId(
                                         category.uid,
-                                        chainToSameCategoryOnly
                                     )
                                     modified = true
                                     categoryExpanded = false
@@ -251,7 +246,7 @@ fun ProcessEdit(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false }) {
                                 processes.forEach { process ->
-                                    if (!chainToSameCategoryOnly || process.categoryId == -1L || process.categoryId == currentCategory.uid) {
+                                    if (process.categoryId == -1L || process.categoryId == currentCategory.uid) {
                                         DropdownMenuItem(
                                             text = { Text(text = process.name) },
                                             onClick = {

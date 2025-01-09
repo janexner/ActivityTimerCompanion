@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exner.tools.activitytimercompanion.data.AllDataHolder
-import com.exner.tools.activitytimercompanion.data.persistence.TimerDataRepository
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
+import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionResolution
@@ -33,9 +33,7 @@ import javax.inject.Inject
 import kotlin.text.Charsets.UTF_8
 
 enum class ProcessStateConstants {
-    AWAITING_PERMISSIONS, // IDLE
-    PERMISSIONS_GRANTED,
-    PERMISSIONS_DENIED,
+    IDLE,
     STARTING_DISCOVERY,
     DISCOVERY_STARTED,
     PARTNER_CHOSEN,
@@ -54,13 +52,7 @@ enum class ProcessStateConstants {
 /****
  * Here's the flow:
  *
- * AWAITING PERMISSIONS ("IDLE")
- * - show brief explanation why permissions are needed, and a button "Get permissions"
- * - check whether permissions are all given.
- *   - If so -> PERMISSIONS_GRANTED
- *   - Otherwise -> PERMISSIONS_DENIED (same as AWAITING_PERMISSIONS?)
- *
- * PERMISSIONS_GRANTED
+ * "IDLE"
  * - show "Start discovery" button
  * - the button has two callbacks
  *   - success -> DISCOVERY_STARTED
@@ -85,7 +77,7 @@ const val userName: String = "Activity Timer Companion"
 const val checkInterval: Long = 500 // this should be milliseconds
 
 data class ProcessState(
-    val currentState: ProcessStateConstants = ProcessStateConstants.AWAITING_PERMISSIONS,
+    val currentState: ProcessStateConstants = ProcessStateConstants.IDLE,
     val message: String = ""
 )
 
@@ -97,6 +89,7 @@ data class EndpointConnectionInformation(
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
+    val tvConnectionStateHolder: TVConnectionStateHolder
 ) : ViewModel() {
 
     private val _processStateFlow = MutableStateFlow(ProcessState())
@@ -253,7 +246,7 @@ class ConnectionViewModel @Inject constructor(
     val establishedConnections: MutableMap<String, TimerEndpoint> = mutableMapOf()
 
     var endpointsFound: Flow<List<TimerEndpoint>> = flow {
-        while (processStateFlow.value.currentState == ProcessStateConstants.AWAITING_PERMISSIONS || processStateFlow.value.currentState == ProcessStateConstants.PERMISSIONS_GRANTED || processStateFlow.value.currentState == ProcessStateConstants.STARTING_DISCOVERY || processStateFlow.value.currentState == ProcessStateConstants.DISCOVERY_STARTED || processStateFlow.value.currentState == ProcessStateConstants.PERMISSIONS_DENIED || processStateFlow.value.currentState == ProcessStateConstants.PARTNER_CHOSEN) {
+        while (processStateFlow.value.currentState == ProcessStateConstants.IDLE || processStateFlow.value.currentState == ProcessStateConstants.STARTING_DISCOVERY || processStateFlow.value.currentState == ProcessStateConstants.DISCOVERY_STARTED || processStateFlow.value.currentState == ProcessStateConstants.PARTNER_CHOSEN) {
             emit(discoveredEndpoints.values.toList())
             delay(checkInterval)
         }
@@ -278,7 +271,7 @@ class ConnectionViewModel @Inject constructor(
                 Log.d("SNDVM", "Authentication requested...")
             }
 
-            ProcessStateConstants.PERMISSIONS_GRANTED -> {
+            ProcessStateConstants.IDLE -> {
                 _processStateFlow.value = ProcessState(newState, "OK")
                 Log.d("SNDVM", "Permissions OK, automatically starting discovery...")
                 viewModelScope.launch() {
@@ -290,10 +283,6 @@ class ConnectionViewModel @Inject constructor(
                     )
                 }
 //                startDiscovery()
-            }
-
-            ProcessStateConstants.PERMISSIONS_DENIED -> {
-                _processStateFlow.value = ProcessState(newState, "Denied: $message")
             }
 
             ProcessStateConstants.CANCELLED -> {
@@ -336,8 +325,6 @@ class ConnectionViewModel @Inject constructor(
                     )
                 }
             }
-
-            ProcessStateConstants.AWAITING_PERMISSIONS -> TODO()
 
             ProcessStateConstants.CONNECTING -> {
                 Log.d("SNDVM", "Accepting connection... $message")

@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -51,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exner.tools.activitytimercompanion.R
-import com.exner.tools.activitytimercompanion.network.Permissions
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
 import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
 import com.exner.tools.activitytimercompanion.ui.ConnectionViewModel
@@ -60,8 +58,8 @@ import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
 import com.exner.tools.activitytimercompanion.ui.IconSpacer
 import com.exner.tools.activitytimercompanion.ui.ProcessState
 import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
+import com.exner.tools.activitytimercompanion.ui.destinations.wrappers.PermissionsGrantedWrapper
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
@@ -72,26 +70,15 @@ import com.ramcosta.composedestinations.generated.destinations.WelcomeDestinatio
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalPermissionsApi::class)
-@Destination<RootGraph>
+@Destination<RootGraph>(
+    wrappers = [PermissionsGrantedWrapper::class]
+)
 @Composable
 fun Connection(
     connectionViewModel: ConnectionViewModel = hiltViewModel(),
     navigator: DestinationsNavigator,
-    tvConnectionStateHolder: TVConnectionStateHolder
 ) {
     val context = LocalContext.current
-    val permissions = Permissions(context = context)
-
-    val permissionsNeeded =
-        rememberMultiplePermissionsState(
-            permissions = permissions.getAllNecessaryPermissionsAsListOfStrings(),
-            onPermissionsResult = { results ->
-                results.forEach { result ->
-                    Log.d("C PERMISSIONS", "${result.key} : ${result.value}")
-                }
-            }
-        )
-
     val processState by connectionViewModel.processStateFlow.collectAsState()
 
     val connectionsClient = Nearby.getConnectionsClient(context)
@@ -117,17 +104,8 @@ fun Connection(
 
     val connectionInfo = connectionViewModel.connectionInfo.collectAsStateWithLifecycle()
 
-    // some sanity checking for state
-    if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS && permissionsNeeded.allPermissionsGranted) {
-        connectionViewModel.triggerTransitionToNewState(ProcessStateConstants.PERMISSIONS_GRANTED)
-    } else if (processState.currentState == ProcessStateConstants.AWAITING_PERMISSIONS) {
-        Log.d(
-            "STND",
-            "Missing permissions: ${permissions.getAllNecessaryPermissionsAsListOfStrings()}"
-        )
-    }
-
     // TODO
+    val tvConnectionStateHolder: TVConnectionStateHolder = connectionViewModel.tvConnectionStateHolder
     val tvConnectionState by tvConnectionStateHolder.tvConnectionState.collectAsState()
     if (tvConnectionState.isConnectedToTV == true) {
         // we should NOT be here! so let's move to the EditorFrontDoor
@@ -145,7 +123,6 @@ fun Connection(
                 ConnectionMainView(
                     processStateCurrent = processState.currentState,
                     processStateMessage = processState.message,
-                    launchMultiplePermissionRequest = permissionsNeeded::launchMultiplePermissionRequest,
                     discoveredEndpoints = discoveredEndpoints,
                     navigator = navigator,
                     triggerTransitionToNewState = connectionViewModel::triggerTransitionToNewState,
@@ -168,7 +145,6 @@ fun Connection(
 fun ConnectionMainView(
     processStateCurrent: ProcessStateConstants,
     processStateMessage: String = "OK",
-    launchMultiplePermissionRequest: () -> Unit,
     discoveredEndpoints: List<TimerEndpoint>,
     navigator: DestinationsNavigator,
     triggerTransitionToNewState: (ProcessStateConstants, String) -> Unit,
@@ -186,19 +162,7 @@ fun ConnectionMainView(
     ) {
         // UI, depending on state
         when (processStateCurrent) {
-            ProcessStateConstants.AWAITING_PERMISSIONS, ProcessStateConstants.PERMISSIONS_DENIED -> {
-                Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
-                DefaultSpacer()
-                Button(
-                    onClick = {
-                        launchMultiplePermissionRequest()
-                    }
-                ) {
-                    Text(text = "Request permissions")
-                }
-            }
-
-            ProcessStateConstants.PERMISSIONS_GRANTED -> {
+            ProcessStateConstants.IDLE -> {
                 Text(text = "All permissions OK.")
             }
 
@@ -376,24 +340,7 @@ fun ConnectionBottomBar(
         },
         floatingActionButton = {
             when (processState.currentState) {
-                ProcessStateConstants.AWAITING_PERMISSIONS -> {
-                    ExtendedFloatingActionButton(
-                        text = { Text(text = "Request Permissions") },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Request permissions"
-                            )
-                        },
-                        onClick = {
-                            // how do we do this?
-                        },
-                        containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
-                        elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
-                    )
-                }
-
-                ProcessStateConstants.PERMISSIONS_GRANTED -> {
+                ProcessStateConstants.IDLE -> {
                     ExtendedFloatingActionButton(
                         text = { Text(text = "Discover Devices") },
                         icon = {

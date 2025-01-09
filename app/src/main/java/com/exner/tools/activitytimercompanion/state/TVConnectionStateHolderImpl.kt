@@ -9,7 +9,7 @@ class TVConnectionStateHolderImpl @Inject constructor() : TVConnectionStateHolde
     private val _tvConnectionState = MutableStateFlow(TVConnectionState())
     override val tvConnectionState: StateFlow<TVConnectionState> = _tvConnectionState
 
-    override fun updateTVConnectionState(isConnectedToTV: Boolean) {
+    override fun updateTVConnection(isConnectedToTV: Boolean) {
         // atomic
         _tvConnectionState.update { current ->
             current.copy(isConnectedToTV = isConnectedToTV)

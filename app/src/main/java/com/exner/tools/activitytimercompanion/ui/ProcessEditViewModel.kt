@@ -19,7 +19,6 @@ import java.util.UUID
 @HiltViewModel(assistedFactory = ProcessEditViewModel.ProcessEditViewModelFactory::class)
 class ProcessEditViewModel @AssistedInject constructor(
     @Assisted val uuid: String?,
-    @Assisted val filterProcessesForCurrentCategory: Boolean,
     private val repository: TimerDataRepository,
 ) : ViewModel() {
 
@@ -74,7 +73,7 @@ class ProcessEditViewModel @AssistedInject constructor(
                     _hasAutoChain.value = process.hasAutoChain
                     _gotoUuid.value = process.gotoUuid
                     _gotoName.value = process.gotoName
-                    updateCategoryId(process.categoryId ?: -1L, filterProcessesForCurrentCategory)
+                    updateCategoryId(process.categoryId)
                     _backgroundUri.value = process.backgroundUri ?: "https://fototimer.net/assets/activitytimer/bg-default.png"
                 }
             }
@@ -87,7 +86,7 @@ class ProcessEditViewModel @AssistedInject constructor(
         }
     }
 
-    fun updateCategoryId(id: Long, filterProcessesForCurrentCategory: Boolean) {
+    fun updateCategoryId(id: Long) {
         if (id == -1L) {
             _currentCategory.value = TimerProcessCategory(name = "All", backgroundUri = null, uid = -1L)
         } else {
@@ -99,7 +98,7 @@ class ProcessEditViewModel @AssistedInject constructor(
         viewModelScope.launch {
             observeProcessesRaw.collect { itemsList ->
                 val filteredItemsList: List<TimerProcess> = itemsList.filter { item ->
-                    if (currentCategory.value.uid == -1L || !filterProcessesForCurrentCategory) {
+                    if (currentCategory.value.uid == -1L) {
                         true
                     } else {
                         item.categoryId == currentCategory.value.uid
@@ -168,6 +167,6 @@ class ProcessEditViewModel @AssistedInject constructor(
 
     @AssistedFactory
     interface ProcessEditViewModelFactory {
-        fun create(uuid: String?, filterProcessesForCurrentCategory: Boolean): ProcessEditViewModel
+        fun create(uuid: String?): ProcessEditViewModel
     }
 }
