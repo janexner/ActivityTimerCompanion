@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.EditorFrontDoorViewModel
+import com.exner.tools.activitytimercompanion.ui.destinations.wrappers.AskForPermissionsWrapper
+import com.exner.tools.activitytimercompanion.ui.destinations.wrappers.EstablishConnectionWrapper
 import com.google.android.gms.nearby.Nearby
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
@@ -31,7 +33,9 @@ import com.ramcosta.composedestinations.generated.destinations.ProcessListDestin
 import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
-@Destination<RootGraph>
+@Destination<RootGraph>(
+    wrappers = [AskForPermissionsWrapper::class, EstablishConnectionWrapper::class]
+)
 @Composable
 fun EditorFrontDoor(
     editorFrontDoorViewModel: EditorFrontDoorViewModel = hiltViewModel(),

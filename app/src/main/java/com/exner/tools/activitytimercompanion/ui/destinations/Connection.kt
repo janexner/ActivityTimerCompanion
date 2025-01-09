@@ -58,8 +58,7 @@ import com.exner.tools.activitytimercompanion.ui.EndpointConnectionInformation
 import com.exner.tools.activitytimercompanion.ui.IconSpacer
 import com.exner.tools.activitytimercompanion.ui.ProcessState
 import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
-import com.exner.tools.activitytimercompanion.ui.destinations.wrappers.PermissionsGrantedWrapper
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.exner.tools.activitytimercompanion.ui.destinations.wrappers.AskForPermissionsWrapper
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
@@ -69,9 +68,8 @@ import com.ramcosta.composedestinations.generated.destinations.EditorFrontDoorDe
 import com.ramcosta.composedestinations.generated.destinations.WelcomeDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Destination<RootGraph>(
-    wrappers = [PermissionsGrantedWrapper::class]
+    wrappers = [AskForPermissionsWrapper::class]
 )
 @Composable
 fun Connection(
@@ -140,7 +138,6 @@ fun Connection(
     )
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ConnectionMainView(
     processStateCurrent: ProcessStateConstants,

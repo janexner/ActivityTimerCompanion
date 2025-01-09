@@ -23,7 +23,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.ramcosta.composedestinations.scope.DestinationScope
 import com.ramcosta.composedestinations.wrapper.DestinationWrapper
 
-object PermissionsGrantedWrapper : DestinationWrapper {
+object AskForPermissionsWrapper : DestinationWrapper {
 
     @OptIn(ExperimentalPermissionsApi::class)
     @Composable
