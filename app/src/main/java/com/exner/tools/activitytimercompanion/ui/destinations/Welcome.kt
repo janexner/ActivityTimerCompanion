@@ -35,7 +35,7 @@ fun Welcome(
                     .padding(innerPadding).padding(8.dp)
                     .fillMaxWidth()
             ) {
-                BodyText(text = "Connect to Activity Timer for TV")
+                BodyText(text = "Connect to Activity Timer for TV and manage your processes")
             }
         },
         bottomBar = {
@@ -44,7 +44,7 @@ fun Welcome(
                 },
                 floatingActionButton = {
                     ExtendedFloatingActionButton(
-                        text = { Text(text = "Connect") },
+                        text = { Text(text = "Start") },
                         icon = {
                             Icon(Icons.Default.Call, "Connect to Activity Timer on TV")
                         },
