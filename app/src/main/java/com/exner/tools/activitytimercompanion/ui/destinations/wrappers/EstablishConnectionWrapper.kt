@@ -5,10 +5,11 @@ import com.ramcosta.composedestinations.scope.DestinationScope
 import com.ramcosta.composedestinations.wrapper.DestinationWrapper
 
 object EstablishConnectionWrapper : DestinationWrapper {
+
     @Composable
     override fun <T> @Composable DestinationScope<T>.Wrap(
         screenContent: @Composable (() -> Unit)
     ) {
-        TODO("Not yet implemented")
+        screenContent()
     }
 }
