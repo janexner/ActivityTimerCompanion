@@ -4,29 +4,18 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exner.tools.activitytimercompanion.data.AllDataHolder
-import com.exner.tools.activitytimercompanion.network.TimerEndpoint
 import com.exner.tools.activitytimercompanion.state.TVConnectionStateHolder
-import com.google.android.gms.nearby.connection.ConnectionInfo
-import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
-import com.google.android.gms.nearby.connection.ConnectionResolution
 import com.google.android.gms.nearby.connection.ConnectionsClient
-import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
-import com.google.android.gms.nearby.connection.DiscoveryOptions
-import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
 import com.google.android.gms.nearby.connection.Payload
 import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
-import com.google.android.gms.nearby.connection.Strategy
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,15 +23,6 @@ import kotlin.text.Charsets.UTF_8
 
 enum class ProcessStateConstants {
     IDLE,
-    STARTING_DISCOVERY,
-    DISCOVERY_STARTED,
-    PARTNER_CHOSEN,
-    CONNECTING,
-    AUTHENTICATION_REQUESTED,
-    AUTHENTICATION_OK,
-    AUTHENTICATION_DENIED,
-    CONNECTION_ESTABLISHED,
-    CONNECTION_DENIED,
     DATA_RECEIVED,
     DONE,
     CANCELLED,
@@ -72,19 +52,9 @@ enum class ProcessStateConstants {
  *
  */
 
-const val serviceId: String = "com.exner.tools.ActivityTimer.Companion"
-const val userName: String = "Activity Timer Companion"
-const val checkInterval: Long = 500 // this should be milliseconds
-
 data class ProcessState(
     val currentState: ProcessStateConstants = ProcessStateConstants.IDLE,
     val message: String = ""
-)
-
-data class EndpointConnectionInformation(
-    val endpointId: String = "",
-    val endpointName: String = "",
-    val authenticationDigits: String = ""
 )
 
 @HiltViewModel
@@ -95,10 +65,6 @@ class ConnectionViewModel @Inject constructor(
     private val _processStateFlow = MutableStateFlow(ProcessState())
     val processStateFlow: StateFlow<ProcessState> = _processStateFlow.asStateFlow()
 
-    private val _connectionInfo = MutableStateFlow(EndpointConnectionInformation())
-    val connectionInfo: StateFlow<EndpointConnectionInformation> = _connectionInfo
-
-    private lateinit var endpointDiscoveryCallback: EndpointDiscoveryCallback
     private lateinit var connectionsClient: ConnectionsClient
 
     private val moshi = Moshi.Builder().build()
@@ -149,107 +115,8 @@ class ConnectionViewModel @Inject constructor(
         }
     }
 
-    val timerLifecycleCallback = object : ConnectionLifecycleCallback() {
-        override fun onConnectionInitiated(
-            endpointId: String,
-            connectionInfo: ConnectionInfo
-        ) {
-            Log.d(
-                "CVMLC",
-                "onConnectionInitiated ${connectionInfo.endpointName} / ${connectionInfo.authenticationDigits}"
-            )
-            // authenticate
-            _connectionInfo.value = EndpointConnectionInformation(
-                endpointId = endpointId,
-                endpointName = connectionInfo.endpointName,
-                authenticationDigits = connectionInfo.authenticationDigits
-            )
-            // now move to auth requested
-            viewModelScope.launch() {
-                eventChannel.send(
-                    UIEvent.transitionState(
-                        ProcessStateConstants.AUTHENTICATION_REQUESTED,
-                        connectionInfo.endpointName
-                    )
-                )
-            }
-        }
-
-        override fun onConnectionResult(
-            endpointId: String,
-            connectionResolution: ConnectionResolution
-        ) {
-            Log.d(
-                "CVMLC",
-                "onConnectionResult $endpointId: $connectionResolution"
-            )
-            if (!connectionResolution.status.isSuccess) {
-                // failed
-                pendingConnections.remove(endpointId)
-                var statusMessage = connectionResolution.status.statusMessage
-                if (null == statusMessage) {
-                    statusMessage = "Unknown issue"
-                }
-                viewModelScope.launch() {
-                    eventChannel.send(
-                        UIEvent.transitionState(
-                            ProcessStateConstants.CONNECTION_DENIED,
-                            message = statusMessage
-                        )
-                    )
-                }
-            } else {
-                // this worked!
-                val newEndpoint = pendingConnections.remove(endpointId)
-                establishedConnections[endpointId] = newEndpoint!!
-                viewModelScope.launch() {
-                    eventChannel.send(
-                        UIEvent.transitionState(
-                            ProcessStateConstants.CONNECTION_ESTABLISHED,
-                            "Connection established: ${newEndpoint.userName}"
-                        )
-                    )
-                }
-            }
-        }
-
-        override fun onDisconnected(endpointId: String) {
-            establishedConnections.remove(endpointId)
-            viewModelScope.launch() {
-                eventChannel.send(
-                    UIEvent.transitionState(
-                        ProcessStateConstants.DONE, "Disconnected"
-                    )
-                )
-            }
-        }
-
-
-    }
-
     fun provideConnectionsClient(connectionsClient: ConnectionsClient) {
         this.connectionsClient = connectionsClient
-    }
-
-    fun provideEndpointDiscoveryCallback(endpointDiscoveryCallback: EndpointDiscoveryCallback) {
-        this.endpointDiscoveryCallback = endpointDiscoveryCallback
-    }
-
-    val discoveredEndpoints: MutableMap<String, TimerEndpoint> = mutableMapOf()
-    fun addDiscoveredEndpointToList(endpoint: TimerEndpoint) {
-        discoveredEndpoints.put(endpoint.endpointId, endpoint)
-    }
-    fun removeDiscoveredEndpointFromList(endpointId: String) {
-        discoveredEndpoints.remove(endpointId)
-    }
-    val pendingConnections: MutableMap<String, TimerEndpoint> = mutableMapOf()
-    val establishedConnections: MutableMap<String, TimerEndpoint> = mutableMapOf()
-
-    var endpointsFound: Flow<List<TimerEndpoint>> = flow {
-        while (processStateFlow.value.currentState == ProcessStateConstants.IDLE || processStateFlow.value.currentState == ProcessStateConstants.STARTING_DISCOVERY || processStateFlow.value.currentState == ProcessStateConstants.DISCOVERY_STARTED || processStateFlow.value.currentState == ProcessStateConstants.PARTNER_CHOSEN) {
-            emit(discoveredEndpoints.values.toList())
-            delay(checkInterval)
-        }
     }
 
     override fun onCleared() {
@@ -266,23 +133,7 @@ class ConnectionViewModel @Inject constructor(
         // DO NOT CALL RECURSIVELY!
         // ONLY CALL FROM View!
         when (newState) {
-            ProcessStateConstants.AUTHENTICATION_REQUESTED -> {
-                _processStateFlow.value = ProcessState(newState, "Auth requested")
-                Log.d("SNDVM", "Authentication requested...")
-            }
-
             ProcessStateConstants.IDLE -> {
-                _processStateFlow.value = ProcessState(newState, "OK")
-                Log.d("SNDVM", "Permissions OK, automatically starting discovery...")
-                viewModelScope.launch() {
-                    eventChannel.send(
-                        UIEvent.transitionState(
-                            ProcessStateConstants.STARTING_DISCOVERY,
-                            message = "Automatically moving to discovery..."
-                        )
-                    )
-                }
-//                startDiscovery()
             }
 
             ProcessStateConstants.CANCELLED -> {
@@ -291,66 +142,6 @@ class ConnectionViewModel @Inject constructor(
                 connectionsClient.stopDiscovery()
                 _processStateFlow.value = ProcessState(newState, "Cancelled")
             }
-
-            // not sure I need this anymore
-            ProcessStateConstants.STARTING_DISCOVERY -> {
-                _processStateFlow.value = ProcessState(newState, "OK")
-                // trigger the actual discovery
-                startDiscovery()
-            }
-
-            ProcessStateConstants.DISCOVERY_STARTED -> {
-                Log.d("SNDVM", "Discovery started...")
-                _processStateFlow.value = ProcessState(newState, "OK")
-            }
-
-            ProcessStateConstants.PARTNER_CHOSEN -> {
-                Log.d("SNDVM", "Chose partner: $message.")
-                // stop discovery, bcs
-                connectionsClient.stopDiscovery()
-                // this is where we build an endpoint and initiate connection
-                val endpointId = message // probably should check that!
-                // find endpoint in discoveredEndpoints
-                val endpoint = discoveredEndpoints[endpointId]
-                _processStateFlow.value = ProcessState(
-                    ProcessStateConstants.PARTNER_CHOSEN,
-                    "Partner chosen: $message..."
-                )
-                if (endpoint != null) {
-                    // initiate connection
-                    connectionsClient.requestConnection(
-                        userName,
-                        endpoint.endpointId,
-                        timerLifecycleCallback
-                    )
-                }
-            }
-
-            ProcessStateConstants.CONNECTING -> {
-                Log.d("SNDVM", "Accepting connection... $message")
-                connectionsClient.acceptConnection(message, payloadCallback)
-            }
-
-            ProcessStateConstants.AUTHENTICATION_OK -> {
-                val newEndpoint = discoveredEndpoints.remove(connectionInfo.value.endpointId)
-                pendingConnections[connectionInfo.value.endpointId] = newEndpoint!! // TODO
-                _processStateFlow.value =
-                    ProcessState(ProcessStateConstants.CONNECTING, connectionInfo.value.endpointId)
-                Log.d("SNDVM", "Now accepting the connection...")
-                connectionsClient.acceptConnection(connectionInfo.value.endpointId, payloadCallback)
-            }
-
-            ProcessStateConstants.AUTHENTICATION_DENIED -> {
-                Log.d("SNDVM", "Connection denied!")
-                _processStateFlow.value =
-                    ProcessState(ProcessStateConstants.DISCOVERY_STARTED, "Connection denied")
-            }
-
-            ProcessStateConstants.CONNECTION_ESTABLISHED -> {
-                // Nothing to do
-            }
-
-            ProcessStateConstants.CONNECTION_DENIED -> TODO()
 
             ProcessStateConstants.DATA_RECEIVED -> {
                 Log.d("SNDVM", "Data received, now moving on...")
@@ -387,57 +178,6 @@ class ConnectionViewModel @Inject constructor(
                 Log.d("SNDVM", "Error!")
             }
         }
-    }
-
-    private fun startDiscovery() {
-        val discoveryOptions =
-            DiscoveryOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT)
-                .build()
-        connectionsClient.startDiscovery(
-            serviceId,
-            object : EndpointDiscoveryCallback() {
-                override fun onEndpointFound(
-                    endpointId: String,
-                    endpointInfo: DiscoveredEndpointInfo
-                ) {
-                    Log.d(
-                        "SNDVM/TEDC",
-                        "OnEndpointFound... $endpointId / ${endpointInfo.endpointName}"
-                    )
-                    val discoveredEndpoint =
-                        TimerEndpoint(endpointId, endpointInfo.endpointName)
-                    discoveredEndpoints[endpointId] = discoveredEndpoint
-                }
-
-                override fun onEndpointLost(endpointId: String) {
-                    Log.d("SNDVM/TEDC", "On Endpoint Lost... $endpointId")
-                    discoveredEndpoints.remove(endpointId)
-                }
-            },
-            discoveryOptions
-        )
-            .addOnSuccessListener { _ ->
-                Log.d("SNDVM", "Success! Discovery started")
-                viewModelScope.launch() {
-                    eventChannel.send(UIEvent.transitionState(ProcessStateConstants.DISCOVERY_STARTED))
-                }
-            }
-            .addOnFailureListener { e: Exception? ->
-                val errorMessage = "Error discovering" + if (e != null) {
-                    ": ${e.message}"
-                } else {
-                    ""
-                }
-                Log.d("SNDVM", errorMessage)
-                viewModelScope.launch() {
-                    eventChannel.send(
-                        UIEvent.transitionState(
-                            newState = ProcessStateConstants.ERROR,
-                            message = errorMessage
-                        )
-                    )
-                }
-            }
     }
 
 }

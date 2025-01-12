@@ -20,6 +20,7 @@ import com.exner.tools.activitytimercompanion.ui.HeaderText
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ConnectionDestination
+import com.ramcosta.composedestinations.generated.destinations.EditorFrontDoorDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @Destination<RootGraph>(start = true)
@@ -50,7 +51,7 @@ fun Welcome(
                         },
                         onClick = {
                             navigator.navigate(
-                                ConnectionDestination()
+                                EditorFrontDoorDestination()
                             )
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
