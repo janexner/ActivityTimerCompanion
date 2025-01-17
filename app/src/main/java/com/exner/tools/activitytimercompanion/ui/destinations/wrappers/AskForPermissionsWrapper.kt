@@ -41,26 +41,26 @@ object AskForPermissionsWrapper : DestinationWrapper {
                 }
             )
 
-        Scaffold(
-            content = { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .padding(8.dp)
-                        .fillMaxSize()
-                ) {
-                    Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
-                }
-            },
-            bottomBar = {
-                PermissionsGrantedWrapperBottomBar(
-                    requestPermissionsAction = permissionsNeeded::launchMultiplePermissionRequest
-                )
-            }
-        )
-
         if (permissionsNeeded.allPermissionsGranted) {
             screenContent()
+        } else {
+            Scaffold(
+                content = { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .padding(8.dp)
+                            .fillMaxSize()
+                    ) {
+                        Text(text = "If you would like to send processes to your TV running Activity Timer, this app needs permission for Bluetooth, WiFi, and the discovery of nearby devices, which may also need location permissions.")
+                    }
+                },
+                bottomBar = {
+                    PermissionsGrantedWrapperBottomBar(
+                        requestPermissionsAction = permissionsNeeded::launchMultiplePermissionRequest
+                    )
+                }
+            )
         }
     }
 }
