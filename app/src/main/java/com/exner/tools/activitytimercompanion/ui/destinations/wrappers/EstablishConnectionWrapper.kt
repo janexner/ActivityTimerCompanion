@@ -32,14 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
 import com.exner.tools.activitytimercompanion.R
 import com.exner.tools.activitytimercompanion.network.EndpointConnectionInformation
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
 import com.exner.tools.activitytimercompanion.ui.IconSpacer
-import com.exner.tools.activitytimercompanion.ui.ProcessStateConstants
-import com.exner.tools.activitytimercompanion.ui.UIEvent
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
@@ -53,8 +50,6 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
 import com.ramcosta.composedestinations.scope.DestinationScope
 import com.ramcosta.composedestinations.wrapper.DestinationWrapper
-import kotlinx.coroutines.launch
-import kotlin.text.Charsets.UTF_8
 
 enum class ConnectionStateConstants {
     IDLE,
@@ -94,7 +89,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
         val context = LocalContext.current
         val connectionsClient = Nearby.getConnectionsClient(context)
 
-        var connectionInformation = remember { mutableStateOf(EndpointConnectionInformation()) }
+        val connectionInformation = remember { mutableStateOf(EndpointConnectionInformation()) }
 
         val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
             override fun onEndpointFound(endpointId: String, endpointInfo: DiscoveredEndpointInfo) {
@@ -137,16 +132,11 @@ object EstablishConnectionWrapper : DestinationWrapper {
                     "onConnectionResult $endpointId: $connectionResolution"
                 )
                 if (!connectionResolution.status.isSuccess) {
-                    // failed
-                    var statusMessage = connectionResolution.status.statusMessage
-                    if (null == statusMessage) {
-                        statusMessage = "Unknown issue"
-                    }
                     currentState.value = ConnectionStateConstants.AUTHENTICATION_DENIED
                 } else {
                     // this worked!
                     val newEndpoint = pendingEndpoints.remove(endpointId)
-                    establishedEndpoints.put(endpointId, newEndpoint!!)
+                    establishedEndpoints[endpointId] = newEndpoint!!
                     currentState.value = ConnectionStateConstants.CONNECTION_ESTABLISHED
                 }
             }
@@ -344,7 +334,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
         }
 
         // if we are connected, no need for any of the above
-        if (isAppConnectedToTV.value == true) {
+        if (isAppConnectedToTV.value) {
             screenContent()
         }
     }

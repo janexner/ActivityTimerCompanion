@@ -8,7 +8,7 @@ import javax.inject.Inject
 @HiltViewModel
 class EditorFrontDoorViewModel @Inject constructor(
 ) : ViewModel() {
-    lateinit var connectionsClient: ConnectionsClient
+    private lateinit var connectionsClient: ConnectionsClient
 
     fun provideConnectionsClient(newConnectionsClient: ConnectionsClient) {
         connectionsClient = newConnectionsClient

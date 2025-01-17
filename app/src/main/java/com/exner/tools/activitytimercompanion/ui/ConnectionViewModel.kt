@@ -77,11 +77,11 @@ class ConnectionViewModel @Inject constructor(
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             Log.d("CVMPC", "Payload received ${payload.id}")
             if (payload.type == Payload.Type.BYTES) {
-                val payloadJson: String = String(payload.asBytes()!!, UTF_8)
+                val payloadJson = String(payload.asBytes()!!, UTF_8)
                 val testPL = adapter.fromJson(payloadJson)
-                viewModelScope.launch() {
+                viewModelScope.launch {
                     eventChannel.send(
-                        UIEvent.transitionState(
+                        UIEvent.TransitionState(
                             ProcessStateConstants.DATA_RECEIVED,
                             "Data received"
                         )
@@ -126,8 +126,7 @@ class ConnectionViewModel @Inject constructor(
     }
 
     fun triggerTransitionToNewState(
-        newState: ProcessStateConstants,
-        message: String = "OK"
+        newState: ProcessStateConstants
     ) {
         // all the logic should be here
         // DO NOT CALL RECURSIVELY!

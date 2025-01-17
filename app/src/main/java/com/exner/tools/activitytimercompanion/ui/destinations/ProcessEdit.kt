@@ -41,7 +41,6 @@ import com.exner.tools.activitytimercompanion.data.persistence.TimerProcess
 import com.exner.tools.activitytimercompanion.data.persistence.TimerProcessCategory
 import com.exner.tools.activitytimercompanion.ui.HeaderText
 import com.exner.tools.activitytimercompanion.ui.ProcessEditViewModel
-import com.exner.tools.activitytimercompanion.ui.SettingsViewModel
 import com.exner.tools.activitytimercompanion.ui.TextAndSwitch
 import com.exner.tools.activitytimercompanion.ui.TextFieldForTimes
 import com.ramcosta.composedestinations.annotation.Destination

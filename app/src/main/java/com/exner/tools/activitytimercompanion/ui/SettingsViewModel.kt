@@ -15,7 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userPreferencesManager: ActivityTimerCompanionUserPreferencesManager,
-    val themeStateHolder: ThemeStateHolder
+    private val themeStateHolder: ThemeStateHolder
 ) : ViewModel() {
 
     val userSelectedTheme: StateFlow<Theme> = userPreferencesManager.theme().stateIn(

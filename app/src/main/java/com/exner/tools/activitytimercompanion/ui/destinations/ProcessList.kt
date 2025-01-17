@@ -132,15 +132,19 @@ fun ProcessList(
                 }
 
                 val filteredProcesses =
-                    if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_ALL) {
-                        processes
-                    } else if (currentCategory.uid == CategoryListDefinitions.CATEGORY_UID_NONE) {
-                        processes.filter { process ->
-                            CategoryListDefinitions.CATEGORY_UID_NONE == process.categoryId || 0L == process.categoryId || null == process.categoryId
+                    when (currentCategory.uid) {
+                        CategoryListDefinitions.CATEGORY_UID_ALL -> {
+                            processes
                         }
-                    } else {
-                        processes.filter { process ->
-                            currentCategory.uid == process.categoryId
+                        CategoryListDefinitions.CATEGORY_UID_NONE -> {
+                            processes.filter { process ->
+                                CategoryListDefinitions.CATEGORY_UID_NONE == process.categoryId || 0L == process.categoryId
+                            }
+                        }
+                        else -> {
+                            processes.filter { process ->
+                                currentCategory.uid == process.categoryId
+                            }
                         }
                     }
                 LazyVerticalGrid(

@@ -4,18 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import com.exner.tools.activitytimercompanion.data.preferences.ActivityTimerCompanionUserPreferencesManager
 import com.exner.tools.activitytimercompanion.state.ThemeStateHolder
-import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
 import com.exner.tools.activitytimercompanion.ui.destinations.ActivityTimerCompanionGlobalScaffold
 import com.exner.tools.activitytimercompanion.ui.theme.ActivityTimerCompanionTheme
 import com.exner.tools.activitytimercompanion.ui.theme.Theme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlin.getValue
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

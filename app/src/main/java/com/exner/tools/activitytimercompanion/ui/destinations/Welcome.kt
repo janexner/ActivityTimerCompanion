@@ -16,10 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.exner.tools.activitytimercompanion.ui.BodyText
-import com.exner.tools.activitytimercompanion.ui.HeaderText
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.ConnectionDestination
 import com.ramcosta.composedestinations.generated.destinations.EditorFrontDoorDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 

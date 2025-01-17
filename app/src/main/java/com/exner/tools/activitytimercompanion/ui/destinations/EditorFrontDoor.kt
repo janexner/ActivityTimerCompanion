@@ -47,7 +47,7 @@ fun EditorFrontDoor(
     editorFrontDoorViewModel.provideConnectionsClient(connectionsClient)
 
     val tvConnectionState by tvConnectionStateHolder.tvConnectionState.collectAsState()
-    if (tvConnectionState.isConnectedToTV == false) {
+    if (!tvConnectionState.isConnectedToTV) {
         // we should NOT be here! so let's move to the Connection screen
         navigator.navigate(ConnectionDestination)
     }

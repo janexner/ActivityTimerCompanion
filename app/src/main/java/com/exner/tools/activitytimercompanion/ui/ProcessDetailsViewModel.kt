@@ -72,7 +72,7 @@ class ProcessDetailsViewModel @AssistedInject constructor(
                         }
                     }
                 }
-                updateCategoryId(process.categoryId ?: -1L)
+                updateCategoryId(process.categoryId)
             }
         }
     }

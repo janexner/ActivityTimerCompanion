@@ -124,12 +124,12 @@ fun ConnectionMainView(
 fun ConnectionBottomBar(
     navigator: DestinationsNavigator,
     processState: ProcessState,
-    transition: (ProcessStateConstants, String) -> Unit
+    transition: (ProcessStateConstants) -> Unit
 ) {
     BottomAppBar(
         actions = {
             IconButton(onClick = {
-                transition(ProcessStateConstants.CANCELLED, "Cancelled")
+                transition(ProcessStateConstants.CANCELLED)
             }) {
                 Icon(
                     imageVector = Icons.Default.Clear,
@@ -183,7 +183,7 @@ fun ConnectionBottomBar(
                             )
                         },
                         onClick = {
-                            transition(ProcessStateConstants.CANCELLED, "Cancel")
+                            transition(ProcessStateConstants.CANCELLED)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
                         elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
