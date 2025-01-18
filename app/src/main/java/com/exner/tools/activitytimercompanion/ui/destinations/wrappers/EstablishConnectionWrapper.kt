@@ -247,14 +247,6 @@ object EstablishConnectionWrapper : DestinationWrapper {
                                         Row(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text(text = "")
-                                                Image(
-                                                    painter = painterResource(id = R.drawable.baseline_tv_24),
-                                                    contentDescription = null
-                                                )
-                                            }
-                                            IconSpacer()
                                             Box(modifier = Modifier
                                                 .padding(PaddingValues(8.dp))
                                                 .clickable {

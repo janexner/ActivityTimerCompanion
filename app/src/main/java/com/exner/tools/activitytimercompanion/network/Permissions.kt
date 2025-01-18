@@ -18,26 +18,6 @@ class Permissions(
 
     private val allNecessaryPermissions = listOf(
         IndividualPermission(
-            name = "android.permission.ACCESS_WIFI_STATE",
-            minSdkVersion = MINSDKVERSION,
-            maxSdkVersion = 35
-        ),
-        IndividualPermission(
-            name = "android.permission.CHANGE_WIFI_STATE",
-            minSdkVersion = MINSDKVERSION,
-            maxSdkVersion = 35
-        ),
-        IndividualPermission(
-            name = "android.permission.BLUETOOTH",
-            minSdkVersion = MINSDKVERSION,
-            maxSdkVersion = 30
-        ),
-        IndividualPermission(
-            name = "android.permission.BLUETOOTH_ADMIN",
-            minSdkVersion = MINSDKVERSION,
-            maxSdkVersion = 30
-        ),
-        IndividualPermission(
             name = "android.permission.ACCESS_COARSE_LOCATION",
             minSdkVersion = MINSDKVERSION,
         ),
@@ -46,20 +26,16 @@ class Permissions(
             minSdkVersion = 29,
         ),
         IndividualPermission(
-            name = "android.permission.BLUETOOTH_ADVERTISE",
-            minSdkVersion = 31,
-        ),
-        IndividualPermission(
-            name = "android.permission.BLUETOOTH_CONNECT",
-            minSdkVersion = 31,
-        ),
-        IndividualPermission(
             name = "android.permission.BLUETOOTH_SCAN",
             minSdkVersion = 31,
         ),
         IndividualPermission(
             name = "android.permission.NEARBY_WIFI_DEVICES",
             minSdkVersion = 32,
+        ),
+        IndividualPermission(
+            name = "android.permission.BLUETOOTH_CONNECT",
+            minSdkVersion = 31,
         ),
     )
 
