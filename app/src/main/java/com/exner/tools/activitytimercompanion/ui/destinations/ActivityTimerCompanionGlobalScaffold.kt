@@ -48,11 +48,11 @@ fun ActivityTimerCompanionGlobalScaffold(
     val destinationsNavigator = navController.rememberDestinationsNavigator()
     val destination = navController.currentDestinationAsState().value
 
-    val connectedToTV: Boolean by mainActivityViewModel.connectedToTV.collectAsStateWithLifecycle()
+    val connectedToTV = mainActivityViewModel.tvConnectionStateHolder.tvConnectionState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
-            ActivityTimerCompanionTopBar(destination, destinationsNavigator, connectedToTV)
+            ActivityTimerCompanionTopBar(destination, destinationsNavigator, connectedToTV.value.isConnectedToTV)
         },
         content = { innerPadding ->
             val newPadding = PaddingValues.Absolute(

@@ -2,8 +2,8 @@ package com.exner.tools.activitytimercompanion.ui.destinations.wrappers
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -21,11 +20,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
@@ -33,19 +30,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.exner.tools.activitytimercompanion.R
 import com.exner.tools.activitytimercompanion.network.EndpointConnectionInformation
 import com.exner.tools.activitytimercompanion.network.TimerEndpoint
 import com.exner.tools.activitytimercompanion.ui.DefaultSpacer
-import com.exner.tools.activitytimercompanion.ui.IconSpacer
 import com.exner.tools.activitytimercompanion.ui.MainActivityViewModel
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -76,14 +71,14 @@ object EstablishConnectionWrapper : DestinationWrapper {
     override fun <T> DestinationScope<T>.Wrap(screenContent: @Composable () -> Unit) {
 
         val mainActivityViewModel = hiltViewModel<MainActivityViewModel>()
-        val tvConnectionState = mainActivityViewModel.connectedToTV.collectAsState()
+        val tvConnectionState = mainActivityViewModel.tvConnectionStateHolder.tvConnectionState.collectAsState()
 
-        val currentState = remember { mutableStateOf(ConnectionStateConstants.IDLE) }
+        val currentState = mainActivityViewModel.connectionUIState.collectAsState()
 
         // all the UI needed during connecting
         //
         // we're going to go straight into discover w/o asking for it
-        val discoveredEndpoints: MutableList<TimerEndpoint> = remember { mutableListOf() }
+        val discoveredEndpoints: List<TimerEndpoint> by mainActivityViewModel.discoveredDevices.observeAsState(listOf())
         val pendingEndpoints: MutableMap<String, TimerEndpoint> = remember { mutableMapOf() }
         val establishedEndpoints: MutableMap<String, TimerEndpoint> = remember { mutableMapOf() }
 
@@ -99,12 +94,12 @@ object EstablishConnectionWrapper : DestinationWrapper {
             override fun onEndpointFound(endpointId: String, endpointInfo: DiscoveredEndpointInfo) {
                 Log.d(TAG, "On Endpoint Found... $endpointId / ${endpointInfo.endpointName}")
                 val endpoint = TimerEndpoint(endpointId, endpointInfo.endpointName)
-                discoveredEndpoints.add(endpoint)
+                mainActivityViewModel.addDiscoveredDevice(endpoint)
             }
 
             override fun onEndpointLost(endpointId: String) {
                 Log.d(TAG, "On Endpoint Lost... $endpointId")
-                discoveredEndpoints.removeIf { it.endpointId == endpointId }
+                mainActivityViewModel.removeDiscoveredDevice(endpointId)
             }
         }
 
@@ -123,7 +118,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
                     authenticationDigits = connectionInfo.authenticationDigits
                 )
                 // now move to auth requested
-                currentState.value = ConnectionStateConstants.AUTHENTICATION_REQUESTED
+                mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.AUTHENTICATION_REQUESTED)
             }
 
             override fun onConnectionResult(
@@ -133,34 +128,34 @@ object EstablishConnectionWrapper : DestinationWrapper {
                     TAG, "onConnectionResult $endpointId: $connectionResolution"
                 )
                 if (!connectionResolution.status.isSuccess) {
-                    currentState.value = ConnectionStateConstants.AUTHENTICATION_DENIED
+                    mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.AUTHENTICATION_DENIED)
                 } else {
                     // this worked!
                     val newEndpoint = pendingEndpoints.remove(endpointId)
                     establishedEndpoints[endpointId] = newEndpoint!!
-                    currentState.value = ConnectionStateConstants.CONNECTION_ESTABLISHED
+                    mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.CONNECTION_ESTABLISHED)
                 }
             }
 
             override fun onDisconnected(endpointId: String) {
                 establishedEndpoints.remove(endpointId)
-                currentState.value = ConnectionStateConstants.DISCONNECTED
+                mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.DISCONNECTED)
             }
         }
 
-        if (currentState.value == ConnectionStateConstants.IDLE) {
+        if (currentState.value.currentState == ConnectionStateConstants.IDLE) {
             val discoveryOptions =
                 DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
             // reset, so to speak
             connectionsClient.stopAllEndpoints()
             connectionsClient.stopDiscovery()
             // now start discovery
-            Log.d(TAG, "Starting discovery... ${STRATEGY.toString()} / $SERVICE_ID_COMPANION")
+            Log.d(TAG, "Starting discovery... $STRATEGY / $SERVICE_ID_COMPANION")
             connectionsClient.startDiscovery(
                 SERVICE_ID_COMPANION, endpointDiscoveryCallback, discoveryOptions
             ).addOnSuccessListener { _ ->
                 Log.d(TAG, "Success! Discovery started")
-                currentState.value = ConnectionStateConstants.DISCOVERY_STARTED
+                mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.DISCOVERY_STARTED)
             }.addOnFailureListener { e: Exception? ->
                 val errorMessage = "Issue starting discovery" + if (e != null) {
                     ": ${e.message}"
@@ -168,9 +163,9 @@ object EstablishConnectionWrapper : DestinationWrapper {
                     ""
                 }
                 Log.d(TAG, errorMessage)
-                currentState.value = ConnectionStateConstants.ERROR
+                mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.ERROR)
             }
-            currentState.value = ConnectionStateConstants.STARTING_DISCOVERY
+            mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.STARTING_DISCOVERY)
         }
 
         val payloadCallback = object : PayloadCallback() {
@@ -207,7 +202,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
             }
         }
 
-        if (tvConnectionState.value) {
+        if (tvConnectionState.value.isConnectedToTV) {
             screenContent()
         } else {
             Scaffold(content = { innerPadding ->
@@ -217,7 +212,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
                         .padding(8.dp)
                         .fillMaxWidth()
                 ) {
-                    when (currentState.value) {
+                    when (currentState.value.currentState) {
                         ConnectionStateConstants.IDLE,
                         ConnectionStateConstants.STARTING_DISCOVERY -> {
                             Text(text = "Looking for a TV now...")
@@ -226,7 +221,11 @@ object EstablishConnectionWrapper : DestinationWrapper {
                         }
 
                         ConnectionStateConstants.DISCOVERY_STARTED -> {
-                            Text(text = "Looking for a TV running Activity Timer... once found, tap to connect.")
+                            Text(text = "Looking for a TV running Activity Timer...")
+                            if (discoveredEndpoints.isNotEmpty()) {
+                                DefaultSpacer()
+                                Text(text = "So far, ${discoveredEndpoints.size} TV(s) have been found. Tap one to connect.")
+                            }
                             DefaultSpacer()
                             LazyColumn(
                                 modifier = Modifier
@@ -245,19 +244,21 @@ object EstablishConnectionWrapper : DestinationWrapper {
                                         ),
                                     ) {
                                         Row(
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center
                                         ) {
                                             Box(modifier = Modifier
                                                 .padding(PaddingValues(8.dp))
                                                 .clickable {
                                                     connectionsClient.stopDiscovery()
+                                                    mainActivityViewModel.removeDiscoveredDevice(endpoint.endpointId)
+                                                    pendingEndpoints[endpoint.endpointId] = endpoint
                                                     connectionsClient.requestConnection(
                                                         USER_NAME,
                                                         endpoint.endpointId,
                                                         timerLifecycleCallback
                                                     )
-                                                    currentState.value =
-                                                        ConnectionStateConstants.PARTNER_CHOSEN
+                                                    mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.PARTNER_CHOSEN)
                                                 }) {
                                                 Text(text = "Activity Timer for TV ID: ${endpoint.endpointId}")
                                             }
@@ -349,10 +350,10 @@ object EstablishConnectionWrapper : DestinationWrapper {
                         onClick = {
                             connectionsClient.stopDiscovery()
                             connectionsClient.stopAllEndpoints()
-                            discoveredEndpoints.clear()
+                            mainActivityViewModel.resetDiscoveredDevices()
                             pendingEndpoints.clear()
                             establishedEndpoints.clear()
-                            currentState.value = ConnectionStateConstants.IDLE
+                            mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.IDLE)
                             destinationsNavigator.navigateUp()
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,

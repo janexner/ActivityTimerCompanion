@@ -40,13 +40,12 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 fun EditorFrontDoor(
     editorFrontDoorViewModel: EditorFrontDoorViewModel = hiltViewModel(),
     navigator: DestinationsNavigator,
-    tvConnectionStateHolder: TVConnectionStateHolder
 ) {
     val context = LocalContext.current
     val connectionsClient = Nearby.getConnectionsClient(context)
     editorFrontDoorViewModel.provideConnectionsClient(connectionsClient)
 
-    val tvConnectionState by tvConnectionStateHolder.tvConnectionState.collectAsState()
+    val tvConnectionState by editorFrontDoorViewModel.tvConnectionStateHolder.tvConnectionState.collectAsState()
     if (!tvConnectionState.isConnectedToTV) {
         // we should NOT be here! so let's move to the Connection screen
         navigator.navigate(ConnectionDestination)
@@ -89,7 +88,7 @@ fun EditorFrontDoor(
                             Icon(Icons.Default.Done, "Done")
                         },
                         onClick = {
-                            tvConnectionStateHolder.updateTVConnection(isConnectedToTV = false)
+                            editorFrontDoorViewModel.updateTvConnectionState(newState = false)
                             navigator.popBackStack(WelcomeDestination, inclusive = false)
                         },
                         containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
