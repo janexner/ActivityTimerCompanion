@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
@@ -64,8 +65,9 @@ enum class ConnectionStateConstants {
     IDLE, STARTING_DISCOVERY, DISCOVERY_STARTED, PARTNER_CHOSEN, AUTHENTICATION_REQUESTED, AUTHENTICATION_OK, AUTHENTICATION_DENIED, CONNECTING, CONNECTION_ESTABLISHED, CONNECTION_DENIED, ERROR, DISCONNECTED
 }
 
-private const val serviceId: String = "com.exner.tools.ActivityTimer.Companion"
-private const val userName: String = "Activity Timer Companion"
+private val STRATEGY = Strategy.P2P_POINT_TO_POINT
+private const val SERVICE_ID_COMPANION = "com.exner.tools.ActivityTimer.Companion"
+private const val USER_NAME = "Activity Timer Companion"
 private const val TAG = "ECW"
 
 object EstablishConnectionWrapper : DestinationWrapper {
@@ -148,18 +150,19 @@ object EstablishConnectionWrapper : DestinationWrapper {
 
         if (currentState.value == ConnectionStateConstants.IDLE) {
             val discoveryOptions =
-                DiscoveryOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT).build()
+                DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
             // reset, so to speak
             connectionsClient.stopAllEndpoints()
             connectionsClient.stopDiscovery()
             // now start discovery
+            Log.d(TAG, "Starting discovery... ${STRATEGY.toString()} / $SERVICE_ID_COMPANION")
             connectionsClient.startDiscovery(
-                serviceId, endpointDiscoveryCallback, discoveryOptions
+                SERVICE_ID_COMPANION, endpointDiscoveryCallback, discoveryOptions
             ).addOnSuccessListener { _ ->
                 Log.d(TAG, "Success! Discovery started")
                 currentState.value = ConnectionStateConstants.DISCOVERY_STARTED
             }.addOnFailureListener { e: Exception? ->
-                val errorMessage = "Error discovering" + if (e != null) {
+                val errorMessage = "Issue starting discovery" + if (e != null) {
                     ": ${e.message}"
                 } else {
                     ""
@@ -204,7 +207,6 @@ object EstablishConnectionWrapper : DestinationWrapper {
             }
         }
 
-
         if (tvConnectionState.value) {
             screenContent()
         } else {
@@ -216,7 +218,7 @@ object EstablishConnectionWrapper : DestinationWrapper {
                         .fillMaxWidth()
                 ) {
                     when (currentState.value) {
-                        ConnectionStateConstants.IDLE -> {}
+                        ConnectionStateConstants.IDLE,
                         ConnectionStateConstants.STARTING_DISCOVERY -> {
                             Text(text = "Looking for a TV now...")
                             DefaultSpacer()
@@ -225,14 +227,6 @@ object EstablishConnectionWrapper : DestinationWrapper {
 
                         ConnectionStateConstants.DISCOVERY_STARTED -> {
                             Text(text = "Looking for a TV running Activity Timer... once found, tap to connect.")
-                            DefaultSpacer()
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .width(64.dp)
-                                    .align(alignment = Alignment.CenterHorizontally),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
                             DefaultSpacer()
                             LazyColumn(
                                 modifier = Modifier
@@ -253,17 +247,20 @@ object EstablishConnectionWrapper : DestinationWrapper {
                                         Row(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
-                                            Image(
-                                                painter = painterResource(id = R.drawable.baseline_tv_24),
-                                                contentDescription = null
-                                            )
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(text = "")
+                                                Image(
+                                                    painter = painterResource(id = R.drawable.baseline_tv_24),
+                                                    contentDescription = null
+                                                )
+                                            }
                                             IconSpacer()
                                             Box(modifier = Modifier
                                                 .padding(PaddingValues(8.dp))
                                                 .clickable {
                                                     connectionsClient.stopDiscovery()
                                                     connectionsClient.requestConnection(
-                                                        userName,
+                                                        USER_NAME,
                                                         endpoint.endpointId,
                                                         timerLifecycleCallback
                                                     )
