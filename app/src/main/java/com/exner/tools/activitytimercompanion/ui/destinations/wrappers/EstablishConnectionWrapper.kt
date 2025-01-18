@@ -23,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
@@ -222,6 +223,10 @@ object EstablishConnectionWrapper : DestinationWrapper {
 
                         ConnectionStateConstants.DISCOVERY_STARTED -> {
                             Text(text = "Looking for a TV running Activity Timer...")
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            DefaultSpacer()
                             if (discoveredEndpoints.isNotEmpty()) {
                                 DefaultSpacer()
                                 Text(text = "So far, ${discoveredEndpoints.size} TV(s) have been found. Tap one to connect.")
@@ -278,10 +283,6 @@ object EstablishConnectionWrapper : DestinationWrapper {
 
                         ConnectionStateConstants.AUTHENTICATION_REQUESTED -> {
                             openAuthenticationDialog.value = true
-                            val dismissCallback = {
-                                openAuthenticationDialog.value = false
-                                mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
-                            }
                             if (openAuthenticationDialog.value) {
                                 AlertDialog(title = { Text(text = "Accept connection to " + connectionInformation.value.endpointName) },
                                     text = { Text(text = "Confirm the code matches on both devices: " + connectionInformation.value.authenticationDigits) },
@@ -291,10 +292,14 @@ object EstablishConnectionWrapper : DestinationWrapper {
                                             contentDescription = "Alert"
                                         )
                                     },
-                                    onDismissRequest = { dismissCallback() },
+                                    onDismissRequest = {
+                                        openAuthenticationDialog.value = false
+                                        mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
+                                    },
                                     confirmButton = {
                                         TextButton(onClick = {
                                             openAuthenticationDialog.value = false
+                                            mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.AUTHENTICATION_OK)
                                             connectionsClient.acceptConnection(
                                                 connectionInformation.value.endpointId,
                                                 payloadCallback
@@ -304,7 +309,11 @@ object EstablishConnectionWrapper : DestinationWrapper {
                                         }
                                     },
                                     dismissButton = {
-                                        TextButton(onClick = { dismissCallback() }) {
+                                        TextButton(onClick = {
+                                            openAuthenticationDialog.value = false
+                                            mainActivityViewModel.updateConnectionUIState(ConnectionStateConstants.AUTHENTICATION_DENIED)
+                                            mainActivityViewModel.updateConnectedToTV(connectedToTV = false)
+                                        }) {
                                             Text(text = "Decline")
                                         }
                                     })
